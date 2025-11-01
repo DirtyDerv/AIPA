@@ -1,0 +1,538 @@
+{
+  "name": "01-Telegram Interface",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        140,
+        300
+      ],
+      "id": "89f8f7c8-8f3b-413b-8ec0-8427f99e6df4",
+      "name": "Telegram Trigger",
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "AIPA Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract relevant data from Telegram message\nconst message = $input.first().json.message;\n\nreturn [{\n  json: {\n    telegram_id: message.from.id,\n    telegram_username: message.from.username || '',\n    first_name: message.from.first_name || '',\n    chat_id: message.chat.id,\n    message_text: message.text || '',\n    message_type: message.text?.startsWith('/') ? 'command' : 'text',\n    command: message.text?.startsWith('/') ? message.text.split(' ')[0].substring(1) : null,\n    command_args: message.text?.startsWith('/') ? message.text.split(' ').slice(1).join(' ') : null,\n    timestamp: new Date(message.date * 1000).toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        300
+      ],
+      "id": "extract-message",
+      "name": "Extract Message Info"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  id,\n  telegram_id,\n  first_name,\n  role,\n  allowed_contexts,\n  is_active\nFROM users\nWHERE telegram_id = {{ $json.telegram_id }}\nAND is_active = true\nLIMIT 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        580,
+        300
+      ],
+      "id": "check-user",
+      "name": "Check User Exists",
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_YOUR_SUPABASE_CREDENTIAL_ID",
+          "name": "AIPA Supabase DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "user-exists",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "exists",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        800,
+        300
+      ],
+      "id": "user-authorized",
+      "name": "User Authorized?"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract Message Info').item.json.chat_id }}",
+        "text": "⛔ Unauthorized Access\n\nThis AI Personal Assistant is private.\n\nIf you should have access, please contact the administrator with your Telegram ID: {{ $('Extract Message Info').item.json.telegram_id }}"
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1020,
+        480
+      ],
+      "id": "unauthorized-response",
+      "name": "Send Unauthorized Message",
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "AIPA Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO conversations (\n  user_id,\n  business_context_id,\n  message_text,\n  message_type,\n  intent,\n  created_at\n) VALUES (\n  '{{ $('Check User Exists').item.json.id }}',\n  (SELECT id FROM business_contexts WHERE name = 'personal' LIMIT 1),\n  '{{ $('Extract Message Info').item.json.message_text }}',\n  'user',\n  '{{ $('Extract Message Info').item.json.command || \"chat\" }}',\n  NOW()\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1020,
+        120
+      ],
+      "id": "log-conversation",
+      "name": "Log Conversation",
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_YOUR_SUPABASE_CREDENTIAL_ID",
+          "name": "AIPA Supabase DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "output": "input",
+        "options": {},
+        "rules": {
+          "rules": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Extract Message Info').item.json.command }}",
+                    "rightValue": "start",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": false
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Extract Message Info').item.json.command }}",
+                    "rightValue": "help",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": false
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Extract Message Info').item.json.command }}",
+                    "rightValue": "briefing",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": false
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ true }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": false
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        1240,
+        120
+      ],
+      "id": "command-router",
+      "name": "Command Router"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract Message Info').item.json.chat_id }}",
+        "text": "👋 Welcome to Your AI Personal Assistant!\n\nI'm here to manage your multiple businesses and personal life:\n🏢 Woody's Creations\n🎵 DJ Business\n💼 BMF Work\n🍺 Pub (Future)\n👤 Personal\n\nWhat I can do:\n✅ Triage emails automatically\n✅ Manage your calendar across all contexts\n✅ Track tasks and priorities\n✅ Provide daily briefings\n✅ Generate business insights\n✅ Answer questions in natural language\n\nQuick Commands:\n/briefing - Daily summary\n/email - Email triage\n/calendar - Today's schedule\n/tasks - View tasks\n/help - Full command list\n\nOr just chat with me naturally:\n\"What's urgent today?\"\n\"Show me DJ bookings this month\"\n\"Create task: Follow up with supplier\"\n\nLet's get started! Try /briefing to see what's on your plate today.",
+        "additionalFields": {
+          "parseMode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1460,
+        -80
+      ],
+      "id": "welcome-message",
+      "name": "Send Welcome Message",
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "AIPA Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract Message Info').item.json.chat_id }}",
+        "text": "📖 AI PA COMMAND REFERENCE\n\n**Main Commands:**\n/briefing - Daily summary (emails, calendar, tasks)\n/email - Unprocessed email summary\n/calendar - Today's schedule\n/tasks - Pending tasks list\n/context - Switch business context\n/help - This message\n\n**Business Contexts:**\n🏢 Woody's Creations - Laser gifts\n🎵 DJ Business - Event DJ services\n💼 BMF Work - Contract work\n🍺 Pub - Future pub management\n👤 Personal - Personal life\n\n**Natural Language:**\nJust chat normally! Examples:\n• \"What's urgent today?\"\n• \"Show me DJ bookings this month\"\n• \"Create task: Call supplier\"\n• \"When is my next meeting?\"\n• \"How many orders this week?\"\n\n**Tips:**\n- Use /briefing every morning\n- Check /email regularly\n- Natural language is powerful!\n\nNeed more help? Just ask!"
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1460,
+        40
+      ],
+      "id": "help-message",
+      "name": "Send Help Message",
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "AIPA Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract Message Info').item.json.chat_id }}",
+        "text": "📊 DAILY BRIEFING\n\n🚧 Full briefing system is being set up...\n\nFor now, try these commands:\n/help - See all commands\n/email - Check emails\n/tasks - View tasks\n\nThe complete briefing workflow will include:\n✅ Today's calendar across all businesses\n✅ Unread emails by priority\n✅ Pending tasks\n✅ Business insights\n\nComing soon! 🚀"
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1460,
+        160
+      ],
+      "id": "briefing-placeholder",
+      "name": "Send Briefing Placeholder",
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "AIPA Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const userMessage = $('Extract Message Info').item.json.message_text;\nconst userName = $('Extract Message Info').item.json.first_name;\nconst chatId = $('Extract Message Info').item.json.chat_id;\n\n// Prepare AI request\nreturn [{\n  json: {\n    chat_id: chatId,\n    user_message: userMessage,\n    user_name: userName,\n    system_prompt: `You are ${userName}'s Executive Assistant AI for managing multiple businesses: Woody's Creations (laser gifts), DJ Business, BMF Work, and personal life. Respond helpfully and concisely to: \"${userMessage}\". Keep responses under 500 characters for Telegram.`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1460,
+        280
+      ],
+      "id": "prepare-ai",
+      "name": "Prepare AI Request"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "claude-3-5-sonnet-20241022"
+            },
+            {
+              "name": "max_tokens",
+              "value": "1024"
+            },
+            {
+              "name": "system",
+              "value": "={{ $json.system_prompt }}"
+            },
+            {
+              "name": "messages",
+              "value": "=[{\"role\": \"user\", \"content\": \"{{ $json.user_message }}\"}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        280
+      ],
+      "id": "claude-api",
+      "name": "Call Claude API",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_CLAUDE_CREDENTIAL_ID",
+          "name": "Claude API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst chatId = $('Prepare AI Request').item.json.chat_id;\nconst aiMessage = response.content[0].text;\n\nreturn [{\n  json: {\n    chat_id: chatId,\n    text: aiMessage\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1900,
+        280
+      ],
+      "id": "extract-ai-response",
+      "name": "Extract AI Response"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.text }}"
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2120,
+        280
+      ],
+      "id": "send-ai-response",
+      "name": "Send AI Response",
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "AIPA Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Message Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message Info": {
+      "main": [
+        [
+          {
+            "node": "Check User Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check User Exists": {
+      "main": [
+        [
+          {
+            "node": "User Authorized?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "User Authorized?": {
+      "main": [
+        [
+          {
+            "node": "Log Conversation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Unauthorized Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Conversation": {
+      "main": [
+        [
+          {
+            "node": "Command Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Command Router": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Help Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Briefing Placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare AI Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Request": {
+      "main": [
+        [
+          {
+            "node": "Call Claude API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Claude API": {
+      "main": [
+        [
+          {
+            "node": "Extract AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract AI Response": {
+      "main": [
+        [
+          {
+            "node": "Send AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "new-workflow",
+  "meta": {},
+  "id": "new"
+}
