@@ -1,0 +1,455 @@
+{
+  "name": "AIPA - Business Intelligence & Reports",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/reports"
+            }
+          ]
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Reports Command Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "📊 **Business Intelligence**\\n\\nWhat would you like to see?\\n\\n1️⃣ Daily summary (all businesses)\\n2️⃣ Weekly summary\\n3️⃣ Monthly summary\\n4️⃣ Revenue comparison\\n5️⃣ DJ performance metrics\\n6️⃣ Woody's sales analytics\\n7️⃣ BMF hours & earnings\\n8️⃣ Custom report\\n\\nReply with a number.",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "reply_markup": {
+            "keyboard": [
+              ["1 - Daily", "2 - Weekly"],
+              ["3 - Monthly", "4 - Revenue"],
+              ["5 - DJ Metrics", "6 - Woody's Analytics"],
+              ["7 - BMF Earnings", "8 - Custom"]
+            ],
+            "one_time_keyboard": true,
+            "resize_keyboard": true
+          }
+        }
+      },
+      "id": "show-reports-menu",
+      "name": "Show Reports Menu",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Fetch all business metrics for today\nconst today = new Date().toISOString().split('T')[0];\n\nreturn [{\n  json: {\n    report_date: today,\n    report_type: 'daily_summary'\n  }\n}];"
+      },
+      "id": "prepare-daily-query",
+      "name": "Prepare Daily Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT \n  'dj' as business,\n  COUNT(*) as bookings_count,\n  SUM(quoted_price) as revenue\nFROM dj_bookings \nWHERE DATE(created_at) = CURRENT_DATE\nUNION ALL\nSELECT \n  'woodys' as business,\n  COUNT(*) as bookings_count,\n  SUM(price) as revenue\nFROM woodys_orders \nWHERE DATE(order_date) = CURRENT_DATE\nUNION ALL\nSELECT \n  'bmf' as business,\n  COUNT(*) as bookings_count,\n  SUM(earnings) as revenue\nFROM bmf_work_log \nWHERE work_date = CURRENT_DATE",
+        "additionalFields": {}
+      },
+      "id": "get-daily-metrics",
+      "name": "Get Daily Metrics",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [850, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as email_count, business_context FROM emails WHERE DATE(received_at) = CURRENT_DATE GROUP BY business_context",
+        "additionalFields": {}
+      },
+      "id": "get-email-metrics",
+      "name": "Get Email Metrics",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as task_count, status FROM tasks WHERE DATE(created_at) = CURRENT_DATE GROUP BY status",
+        "additionalFields": {}
+      },
+      "id": "get-task-metrics",
+      "name": "Get Task Metrics",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [850, 400],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Compile daily summary\nconst businessMetrics = $node[\"Get Daily Metrics\"].json || [];\nconst emailMetrics = $node[\"Get Email Metrics\"].json || [];\nconst taskMetrics = $node[\"Get Task Metrics\"].json || [];\nconst today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });\n\nlet message = `📊 **Daily Business Summary**\\n${today}\\n\\n`;\n\n// Business Revenue\nmessage += `💰 **Revenue**\\n`;\nlet totalRevenue = 0;\n\nfor (const biz of businessMetrics) {\n  const revenue = parseFloat(biz.revenue || 0);\n  totalRevenue += revenue;\n  const businessName = {\n    'dj': '🎵 DJ Business',\n    'woodys': '🎁 Woody\\'s Creations',\n    'bmf': '💼 BMF Work'\n  }[biz.business] || biz.business;\n  \n  message += `${businessName}: £${revenue.toFixed(2)} (${biz.bookings_count} items)\\n`;\n}\n\nmessage += `**Total: £${totalRevenue.toFixed(2)}**\\n\\n`;\n\n// Email Activity\nmessage += `📧 **Email Activity**\\n`;\nlet totalEmails = 0;\n\nfor (const email of emailMetrics) {\n  totalEmails += parseInt(email.email_count || 0);\n  message += `${email.business_context}: ${email.email_count}\\n`;\n}\n\nmessage += `**Total: ${totalEmails} emails**\\n\\n`;\n\n// Task Status\nmessage += `✅ **Tasks**\\n`;\nlet totalTasks = 0;\n\nfor (const task of taskMetrics) {\n  totalTasks += parseInt(task.task_count || 0);\n  const statusEmoji = {\n    'completed': '✅',\n    'in_progress': '🔄',\n    'pending': '⏳'\n  }[task.status] || '📌';\n  \n  message += `${statusEmoji} ${task.status}: ${task.task_count}\\n`;\n}\n\nmessage += `**Total: ${totalTasks} tasks**`;\n\nreturn [{\n  json: {\n    message: message,\n    total_revenue: totalRevenue,\n    total_emails: totalEmails,\n    total_tasks: totalTasks\n  }\n}];"
+      },
+      "id": "compile-daily-summary",
+      "name": "Compile Daily Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Reports Command Trigger\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-daily-summary",
+      "name": "Send Daily Summary",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  DATE(created_at) as date,\n  'dj' as business,\n  COUNT(*) as count,\n  SUM(quoted_price) as revenue\nFROM dj_bookings \nWHERE created_at >= DATE_SUB(CURRENT_DATE, INTERVAL 30 DAY)\nGROUP BY DATE(created_at)\nUNION ALL\nSELECT \n  DATE(order_date) as date,\n  'woodys' as business,\n  COUNT(*) as count,\n  SUM(price) as revenue\nFROM woodys_orders \nWHERE order_date >= DATE_SUB(CURRENT_DATE, INTERVAL 30 DAY)\nGROUP BY DATE(order_date)\nUNION ALL\nSELECT \n  work_date as date,\n  'bmf' as business,\n  COUNT(*) as count,\n  SUM(earnings) as revenue\nFROM bmf_work_log \nWHERE work_date >= DATE_SUB(CURRENT_DATE, INTERVAL 30 DAY)\nGROUP BY work_date\nORDER BY date DESC",
+        "additionalFields": {}
+      },
+      "id": "get-monthly-metrics",
+      "name": "Get Monthly Revenue Data",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [650, 500],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Analyze monthly revenue trends\nconst data = items.map(i => i.json);\n\n// Group by business\nconst byBusiness = {\n  'dj': { revenue: 0, count: 0 },\n  'woodys': { revenue: 0, count: 0 },\n  'bmf': { revenue: 0, count: 0 }\n};\n\nfor (const row of data) {\n  const biz = row.business;\n  byBusiness[biz].revenue += parseFloat(row.revenue || 0);\n  byBusiness[biz].count += parseInt(row.count || 0);\n}\n\nlet message = `📊 **Monthly Revenue Report**\\n`;\nmessage += `Last 30 Days\\n\\n`;\n\nlet totalRevenue = 0;\n\nfor (const [biz, stats] of Object.entries(byBusiness)) {\n  const businessName = {\n    'dj': '🎵 DJ Business',\n    'woodys': '🎁 Woody\\'s Creations',\n    'bmf': '💼 BMF Work'\n  }[biz];\n  \n  const avgPerItem = stats.count > 0 ? stats.revenue / stats.count : 0;\n  \n  message += `**${businessName}**\\n`;\n  message += `💰 Revenue: £${stats.revenue.toFixed(2)}\\n`;\n  message += `📦 Items: ${stats.count}\\n`;\n  message += `📊 Avg: £${avgPerItem.toFixed(2)}\\n\\n`;\n  \n  totalRevenue += stats.revenue;\n}\n\nmessage += `**TOTAL REVENUE: £${totalRevenue.toFixed(2)}**\\n\\n`;\n\n// Revenue breakdown percentage\nmessage += `**Revenue Breakdown:**\\n`;\nfor (const [biz, stats] of Object.entries(byBusiness)) {\n  const percentage = totalRevenue > 0 ? (stats.revenue / totalRevenue * 100).toFixed(1) : 0;\n  const businessName = {\n    'dj': 'DJ',\n    'woodys': 'Woody\\'s',\n    'bmf': 'BMF'\n  }[biz];\n  \n  message += `${businessName}: ${percentage}%\\n`;\n}\n\nreturn [{\n  json: {\n    message: message,\n    total_revenue: totalRevenue,\n    breakdown: byBusiness\n  }\n}];"
+      },
+      "id": "analyze-monthly-revenue",
+      "name": "Analyze Monthly Revenue",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 500]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Reports Command Trigger\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-monthly-report",
+      "name": "Send Monthly Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1050, 500],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  event_type,\n  COUNT(*) as booking_count,\n  AVG(quoted_price) as avg_price,\n  SUM(quoted_price) as total_revenue,\n  AVG(duration_hours) as avg_duration\nFROM dj_bookings\nWHERE created_at >= DATE_SUB(CURRENT_DATE, INTERVAL 90 DAY)\nGROUP BY event_type\nORDER BY total_revenue DESC",
+        "additionalFields": {}
+      },
+      "id": "get-dj-metrics",
+      "name": "Get DJ Performance Metrics",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [650, 600],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Format DJ performance metrics\nconst metrics = items.map(i => i.json);\n\nif (metrics.length === 0) {\n  return [{\n    json: {\n      message: \"📭 No DJ metrics available\"\n    }\n  }];\n}\n\nlet message = `🎵 **DJ Business Performance**\\nLast 90 Days\\n\\n`;\n\nlet totalBookings = 0;\nlet totalRevenue = 0;\n\nfor (const metric of metrics) {\n  const count = parseInt(metric.booking_count || 0);\n  const avgPrice = parseFloat(metric.avg_price || 0);\n  const revenue = parseFloat(metric.total_revenue || 0);\n  const avgDuration = parseFloat(metric.avg_duration || 0);\n  \n  message += `**${metric.event_type.toUpperCase()}**\\n`;\n  message += `📦 Bookings: ${count}\\n`;\n  message += `💰 Total: £${revenue.toFixed(2)}\\n`;\n  message += `📊 Avg Price: £${avgPrice.toFixed(2)}\\n`;\n  message += `⏱️ Avg Duration: ${avgDuration.toFixed(1)}h\\n\\n`;\n  \n  totalBookings += count;\n  totalRevenue += revenue;\n}\n\nmessage += `**TOTALS**\\n`;\nmessage += `📦 Total Bookings: ${totalBookings}\\n`;\nmessage += `💵 Total Revenue: £${totalRevenue.toFixed(2)}\\n`;\nmessage += `📊 Avg per Booking: £${(totalRevenue / totalBookings).toFixed(2)}`;\n\nreturn [{\n  json: {\n    message: message,\n    total_bookings: totalBookings,\n    total_revenue: totalRevenue\n  }\n}];"
+      },
+      "id": "format-dj-metrics",
+      "name": "Format DJ Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 600]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Reports Command Trigger\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-dj-metrics",
+      "name": "Send DJ Metrics",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1050, 600],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "headerAuth",
+        "requestMethod": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "options": {},
+        "headerParametersJson": "={\n  \"x-api-key\": \"{{$credentials.anthropicApi.apiKey}}\",\n  \"anthropic-version\": \"2023-06-01\",\n  \"content-type\": \"application/json\"\n}",
+        "bodyParametersJson": "={\n  \"model\": \"claude-3-5-sonnet-20241022\",\n  \"max_tokens\": 2048,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Analyze this business data and provide strategic insights.\\n\\nData:\\n{{ JSON.stringify($node[\\\"Get Monthly Revenue Data\\\"].json) }}\\n\\nProvide:\\n1. Key trends and patterns\\n2. Areas of strength\\n3. Areas needing attention\\n4. Actionable recommendations\\n5. Growth opportunities\\n\\nFormat as a concise executive summary.\"\n    }\n  ]\n}"
+      },
+      "id": "get-ai-insights",
+      "name": "Get AI Strategic Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 700],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "2",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Reports Command Trigger\"].json.message.chat.id }}",
+        "text": "=🧠 **AI Strategic Insights**\\n\\n{{ $json.content[0].text }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-ai-insights",
+      "name": "Send AI Insights",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [850, 700],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Reports Command Trigger": {
+      "main": [
+        [
+          {
+            "node": "Show Reports Menu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Show Reports Menu": {
+      "main": [
+        [
+          {
+            "node": "Prepare Daily Query",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Monthly Revenue Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get DJ Performance Metrics",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get AI Strategic Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Daily Query": {
+      "main": [
+        [
+          {
+            "node": "Get Daily Metrics",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Email Metrics",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Task Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Daily Metrics": {
+      "main": [
+        [
+          {
+            "node": "Compile Daily Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Email Metrics": {
+      "main": [
+        [
+          {
+            "node": "Compile Daily Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Task Metrics": {
+      "main": [
+        [
+          {
+            "node": "Compile Daily Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Daily Summary": {
+      "main": [
+        [
+          {
+            "node": "Send Daily Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Monthly Revenue Data": {
+      "main": [
+        [
+          {
+            "node": "Analyze Monthly Revenue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Monthly Revenue": {
+      "main": [
+        [
+          {
+            "node": "Send Monthly Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get DJ Performance Metrics": {
+      "main": [
+        [
+          {
+            "node": "Format DJ Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format DJ Metrics": {
+      "main": [
+        [
+          {
+            "node": "Send DJ Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get AI Strategic Insights": {
+      "main": [
+        [
+          {
+            "node": "Send AI Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-11-01T18:00:00.000Z",
+  "versionId": "1"
+}
