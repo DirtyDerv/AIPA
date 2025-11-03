@@ -1,205 +1,142 @@
-# AI Personal Assistant (AIPA) System
+# AIPA - AI Personal Assistant
 
-## Overview
-A comprehensive AI-powered personal assistant system managing multiple business contexts through Telegram, using n8n orchestration with Claude and Gemini AI.
+## Project Status
+✅ **Discord Migration Complete**
+✅ **Project Cleanup Complete**  
+✅ **BMF Work Logging Functional**
+🔄 **Bot Deployment Pending**
+
+## Quick Start
+1. **BMF Work Logging**: Run `python tools/bmf_immediate.py`
+2. **Discord Bot**: Deploy `bot/discord_bot_bmf.py` to server
+3. **Web Interface**: Open `web/bmf_web_logger.html`
+
+## Project Structure
+```
+📁 AIPA/
+├── 🤖 bot/           # Discord bot files
+├── 📋 docs/          # Documentation
+├── ⚙️ config/        # Configuration & credentials
+├── 🔧 tools/         # Scripts & utilities
+├── 📊 workflows/     # n8n workflow backups
+├── 🌐 web/           # Web interfaces
+└── 🗃️ backups/       # Project backups
+```
+
+## Active Systems
+- **n8n**: 20 active workflows on 192.168.0.14:5678
+- **Gmail Organizer**: Auto-organizing emails daily at 2 AM
+- **Discord Voice**: Processing voice messages with Gemini AI
+- **BMF Logging**: Multiple working solutions available
+
+## Core Features
+- 📧 **Gmail Organization**: AI-powered email sorting and labeling
+- 🎵 **Discord Voice Processing**: Voice-to-text with Gemini AI
+- 📝 **BMF Work Logging**: Track and log work entries
+- 📱 **Discord Integration**: Rich embeds and slash commands
+- 🤖 **AI Processing**: Google Gemini for smart responses
 
 ## Business Contexts
 1. **Woody's Creations UK** - Laser-cut gifts and signs manufacturing
 2. **DJ Business** - Event DJ services
 3. **BMF** - Contract work for Brian Farmer
-4. **Pub** (Future) - Landlord and pub management
-5. **Personal** - Personal life management
+4. **Personal** - Personal life management
 
-## System Architecture
-
-### Tech Stack
-- **n8n** (Self-hosted): Workflow orchestration
-- **Telegram Bot**: User interface and communication
-- **Supabase**: Database and context storage (Free tier)
-- **Claude API**: Advanced AI reasoning (Free tier)
-- **Gemini API**: Cost-effective AI processing (Free tier)
+## Tech Stack
+- **n8n** (Self-hosted): Workflow orchestration and automation
+- **Discord Bot**: User interface and communication (migrated from Telegram)
+- **Supabase**: Database and context storage
+- **Google Gemini AI**: Cost-effective AI processing (migrated from Claude)
 - **Google Workspace**: Gmail, Calendar, Drive integration
-- **Ngrok**: Public tunnel for self-hosted n8n
+- **GitHub**: Code repository and version control
 
-### Core Components
-1. **Telegram Interface** - Main communication hub
-2. **Email Processing** - Automated triage and categorization
-3. **Calendar Management** - Multi-context scheduling
-4. **Task Management** - Priority-based todo system
-5. **AI Agent Router** - Smart API selection
-6. **Business Intelligence** - Weekly reports and insights
-7. **Specialized Managers** - DJ bookings, orders, work tracking
+## Discord Integration
+- **Server**: AIPA Business Management
+- **Bot**: AIPA Bot (discord_bot_bmf.py)
+- **Channels**: 9 specialized channels with webhooks
+- **Voice Processing**: Gemini AI for voice-to-text
+- **Commands**: Slash commands and natural language
 
-## Repository Structure
+## Active Workflows (n8n)
+1. Gmail Organization & Cleanup (Daily 2 AM)
+2. Discord Voice Processing
+3. BMF Work Logging
+4. Discord Message Processing
+5. Business Intelligence & Reports
+6. Calendar Management
+7. Email Processing with AI
+8. And 13+ more business automation workflows
 
-```
-AIPA/
-├── README.md (this file)
-├── docs/
-│   ├── 01-SETUP-GUIDE.md
-│   ├── 02-TELEGRAM-BOT-SETUP.md
-│   ├── 03-GOOGLE-WORKSPACE-SETUP.md
-│   ├── 04-SUPABASE-SETUP.md
-│   ├── 05-N8N-CREDENTIALS.md
-│   ├── 06-USER-GUIDE.md
-│   ├── 07-TESTING-CHECKLIST.md
-│   └── 08-TROUBLESHOOTING.md
-├── database/
-│   ├── schema.sql
-│   ├── seed-data.sql
-│   └── migrations/
-├── n8n-workflows/
-│   ├── 01-telegram-interface.json
-│   ├── 02-email-processing.json
-│   ├── 03-calendar-management.json
-│   ├── 04-daily-briefing.json
-│   ├── 05-ai-agent-router.json
-│   ├── 06-business-strategist.json
-│   ├── 07-marketing-manager.json
-│   ├── 08-task-management.json
-│   ├── 09-dj-booking-pipeline.json
-│   ├── 10-woodys-order-manager.json
-│   └── 11-bmf-work-tracker.json
-├── ai-prompts/
-│   ├── executive-assistant.md
-│   ├── business-strategist.md
-│   ├── marketing-manager.md
-│   ├── operations-manager.md
-│   ├── booking-manager.md
-│   ├── project-coordinator.md
-│   └── financial-controller.md
-└── scripts/
-    ├── backup-database.sh
-    └── restore-database.sh
-```
+## BMF Work Logging Solutions
+1. **Discord Bot**: `bot/discord_bot_bmf.py` - Auto-detects BMF messages
+2. **Immediate Script**: `tools/bmf_immediate.py` - Command-line logging
+3. **Web Interface**: `web/bmf_web_logger.html` - Browser-based
+4. **n8n Workflow**: Automated processing via Discord webhooks
 
-## Quick Start
+## Installation & Setup
 
 ### Prerequisites
-- Self-hosted n8n instance (running on home server)
-- Ngrok tunnel configured: `https://uniterative-futile-charmain.ngrok-free.dev`
-- Google account (Gmail, Calendar, Drive)
-- Telegram account
-- Supabase account (free tier)
-- Claude API access (free tier)
-- Gemini API access (free tier)
+- n8n server running (192.168.0.14:5678)
+- Discord server and bot token
+- Google Workspace account
+- Supabase database
+- Gemini API access
 
-### Installation Steps
-1. Follow `docs/01-SETUP-GUIDE.md` for complete setup
-2. Configure credentials as per `docs/05-N8N-CREDENTIALS.md`
-3. Import n8n workflows from `n8n-workflows/`
-4. Set up database using `database/schema.sql`
-5. Create Telegram bot following `docs/02-TELEGRAM-BOT-SETUP.md`
-6. Configure Google Workspace per `docs/03-GOOGLE-WORKSPACE-SETUP.md`
-
-## Features
-
-### Core Capabilities
-- ✅ Multi-business context management
-- ✅ Intelligent email triage and categorization
-- ✅ Cross-calendar scheduling with conflict detection
-- ✅ Priority-based task management
-- ✅ Daily briefings at 8 AM
-- ✅ Weekly business strategy reports
-- ✅ Marketing campaign planning
-- ✅ Automated booking pipeline (DJ)
-- ✅ Order management (Woody's Creations)
-- ✅ Work logging and timesheet tracking (BMF)
-
-### AI Agents
-1. **Executive Assistant** - Primary interface and coordination
-2. **Business Strategist** - Weekly insights and growth opportunities
-3. **Marketing Manager** - Campaign planning and content ideas
-4. **Operations Manager** - Woody's Creations production
-5. **Booking Manager** - DJ business pipeline
-6. **Project Coordinator** - BMF work tracking
-7. **Financial Controller** - Multi-business expense and revenue
+### Quick Setup
+1. Clone this repository
+2. Install dependencies: `pip install -r config/requirements.txt`
+3. Configure credentials in `config/CREDENTIALS.md`
+4. Import n8n workflows from `workflows/`
+5. Deploy Discord bot: `python bot/discord_bot_bmf.py`
 
 ## Usage
 
-### Telegram Commands
+### Discord Commands
 ```
-/start - Initialize the PA system
-/context [business] - Switch business context
-/briefing - Get current status summary
-/email - Email triage summary
-/calendar - Today's schedule
-/tasks - View and manage tasks
-/report - Business insights
-/help - Command reference
+/bmf [work_description] - Log BMF work
+/status - Check system status
+Type naturally: "BMF work: tomorrow eddison and wanless fitting leadscrew"
 ```
 
 ### Natural Language
-Simply message the bot naturally:
-- "What's on my calendar today?"
-- "Show me urgent emails for Woody's Creations"
-- "Create a task to follow up with DJ inquiry"
-- "What were my DJ bookings this month?"
-- "Schedule production time for new orders"
+Simply message in Discord:
+- "BMF work: installed new machinery today"
+- "Check my calendar for tomorrow"
+- "Organize my emails"
+- Voice messages are automatically processed
+
+## Recent Accomplishments
+- ✅ Successfully migrated from Telegram to Discord
+- ✅ Integrated Google Gemini AI for cost optimization
+- ✅ Created comprehensive BMF work logging system
+- ✅ Organized project structure from 100+ scattered files
+- ✅ Cleaned up n8n from 25 to 20 active workflows
+- ✅ Implemented advanced Gmail organization with AI
+- ✅ Added Discord voice processing capabilities
+
+## Next Steps
+1. Deploy Discord bot to server for 24/7 operation
+2. Monitor and maintain active workflows
+3. Expand Discord command capabilities
+4. Implement customer-facing features
 
 ## Documentation
-
-- **Setup & Configuration**: See `docs/01-SETUP-GUIDE.md`
-- **User Guide**: See `docs/06-USER-GUIDE.md`
-- **Troubleshooting**: See `docs/08-TROUBLESHOOTING.md`
-
-## API Usage & Limits
-
-### Free Tier Allocations
-- **Claude API**: ~20-30 requests/day (use for complex reasoning)
-- **Gemini API**: 1,500 requests/day (use for classification/simple tasks)
-- **Supabase**: 500 MB database, 2 GB bandwidth
-- **Telegram Bot**: Unlimited messages
-- **n8n**: No limits (self-hosted)
-
-### Cost Management
-- AI Agent Router automatically selects cheapest appropriate API
-- Request usage tracked in Supabase
-- Warnings sent when approaching limits
-
-## Privacy & Security
-
-### Data Handling
-- Email content summarized before sending to AI APIs
-- Financial details stored locally, not analyzed externally
-- No sensitive passwords or credentials sent to AI
-- Regular data cleanup (auto-delete old conversations >90 days)
-
-### Access Control
-- Primary user: Woody
-- Secondary user: Angie (Woody's Creations context only)
-- No external access to BMF confidential data
-
-## Maintenance
-
-### Regular Tasks
-- Monitor API usage weekly
-- Review AI decision logs monthly
-- Update business contexts as needed
-- Backup Supabase database weekly
-
-### Troubleshooting
-- Check ngrok tunnel if webhooks fail
-- Verify API keys if AI responses stop
-- Review n8n execution logs for workflow errors
-
-## Future Enhancements
-- Voice interface via Telegram voice messages
-- Customer-facing chatbots (DJ inquiries, order status)
-- Inventory management for Woody's Creations
-- Pub-specific workflows when opening
-- Staff scheduling for pub
-- Financial forecasting and budget planning
+See `docs/` folder for:
+- Complete setup guides
+- Credential configuration
+- Workflow documentation
+- Troubleshooting guides
+- User manuals
 
 ## Support
-- GitHub Issues: [Create issue]
-- Documentation: See `docs/` folder
-- n8n Community: https://community.n8n.io
+- **Documentation**: See `docs/WORKLOG_COMPLETE.md` for comprehensive system overview
+- **Issues**: GitHub Issues for bug reports
+- **Setup**: Follow guides in `docs/` folder
 
 ## Version
-Current Version: 1.0.0
-Last Updated: 2025-11-01
+Current Version: 2.0.0 (Discord Migration Complete)
+Last Updated: 2025-11-03
 
 ---
 
-**Note**: This is a self-hosted, zero-budget AI PA system built with free-tier services and open-source tools. All components are designed to operate within free tier limits while providing enterprise-level personal assistant capabilities.
+**Note**: This system has evolved from a Telegram-based to a Discord-based AI assistant with comprehensive business automation, Gmail organization, voice processing, and work logging capabilities. All major components are operational and documented.
