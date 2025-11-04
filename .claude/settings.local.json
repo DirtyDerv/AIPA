@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:uniterative-futile-charmain.ngrok-free.dev)",
+      "Bash(curl:*)",
+      "Bash(python -c:*)",
+      "Bash(for id in b1yMD7Z3YrORGygA 0omUZ8aqkKBhaauz cUpfgkHJrjGXpdaY UjgOOdgTl1f6aCNR JmRpF50T7syjavyx JeMfeB4VSArFk89X)",
+      "Bash(do curl -s -H \"X-N8N-API-KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmMTFlODY2Zi0wZTViLTRiYzUtYjU0NC00YzhkNTkwNjljNWYiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzYyMDIxODg4fQ.FwFK-AbfuTuNOqTntG3otFfo7eOoklVLSzdRx9aMrdI\" \"http://192.168.0.14:5678/api/v1/workflows/$id\")",
+      "Bash(done)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(docker ps:*)",
+      "Bash(netstat:*)",
+      "Bash(python:*)",
+      "Bash(do curl -s -H \"X-N8N-API-KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGEyYTE3NC1kMzU5LTRhZTQtYTFhZS1iNDI1YzczMjk3NTkiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzYyMDk1NzI0fQ.O2U8Ix7OLoXP7bQW-tyM9g2BssUP4YA5Ko5uJ4Um_5o\" \"http://192.168.0.14:5678/api/v1/workflows/$id\")",
+      "WebFetch(domain:192.168.0.14)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(node --version:*)",
+      "Bash(npx:*)",
+      "Bash(where:*)",
+      "Bash(dir /s /b C:Userswoody.claude*.json 2)",
+      "Bash(nul)",
+      "Bash(claude mcp list:*)",
+      "Bash(claude mcp add:*)",
+      "mcp__n8n-mcp__search_nodes",
+      "mcp__n8n-mcp__get_node_essentials",
+      "mcp__n8n-mcp__n8n_list_workflows",
+      "mcp__n8n-mcp__n8n_update_partial_workflow",
+      "WebFetch(domain:docs.n8n.io)",
+      "mcp__n8n-mcp__n8n_list_executions",
+      "mcp__n8n-mcp__get_node_documentation",
+      "Bash(telegram_interface_live.json)",
+      "Bash(dir:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

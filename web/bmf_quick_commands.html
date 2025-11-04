@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AIPA BMF Quick Commands</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #2c2f33; color: #fff; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .command { background: #40444b; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .status { background: #7289da; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        code { background: #36393f; padding: 5px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AIPA BMF Quick Commands</h1>
+        
+        <div class="status">
+            <h3>📊 Current Status</h3>
+            <p>✅ Immediate BMF processing: Available</p>
+            <p>⚠️ Discord bot auto-replies: Fixing permissions</p>
+            <p>✅ Database logging: Working</p>
+            <p>✅ Discord confirmations: Working</p>
+        </div>
+        
+        <div class="command">
+            <h3>🔨 Log BMF Work (Immediate)</h3>
+            <p>Run this Python script to log work immediately:</p>
+            <code>python bmf_immediate.py</code>
+            <p>Then type your work description when prompted.</p>
+        </div>
+        
+        <div class="command">
+            <h3>📱 Discord Slash Commands (Once Bot Fixed)</h3>
+            <p>In Discord, type:</p>
+            <code>/bmf tomorrow eddison and wanless fitting leadscrew</code>
+            <p>Bot will automatically process and confirm.</p>
+        </div>
+        
+        <div class="command">
+            <h3>🌐 Web Interface</h3>
+            <p>Open bmf_web_logger.html for browser-based logging</p>
+        </div>
+        
+        <div class="command">
+            <h3>🔧 Fix Discord Bot</h3>
+            <p>To enable automatic Discord replies:</p>
+            <ol>
+                <li>Go to <a href="https://discord.com/developers/applications/" target="_blank">Discord Developer Portal</a></li>
+                <li>Select AIPA application</li>
+                <li>Go to Bot → Privileged Gateway Intents</li>
+                <li>Enable "Message Content Intent"</li>
+                <li>Save changes</li>
+                <li>Run: <code>python discord_bot_bmf.py</code></li>
+            </ol>
+        </div>
+    </div>
+</body>
+</html>

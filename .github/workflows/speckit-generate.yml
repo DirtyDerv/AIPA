@@ -1,0 +1,57 @@
+name: Speckit Generate
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install requirements
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Run speckit generator (dry-run)
+        run: |
+          python tools/speckit_generate.py --feature "Automated Spec Run" --output generated_specs || true
+
+      - name: Secret scan (basic)
+        run: |
+          python - <<'PY'
+import re, sys, pathlib
+patterns = [
+  re.compile(r"[MN][A-Za-z0-9_-]{23}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{27}"),
+  re.compile(r"ghp_[A-Za-z0-9_]{36}"),
+  re.compile(r"AKIA[0-9A-Z]{16}"),
+]
+found=False
+for p in pathlib.Path('generated_specs').rglob('*'):
+    if p.is_file():
+        txt=p.read_text(encoding='utf-8', errors='ignore')
+        for pat in patterns:
+            if pat.search(txt):
+                print('FOUND', p, pat.pattern)
+                found=True
+if found:
+    print('Secrets detected in generated output; aborting commit')
+    sys.exit(1)
+print('No secrets detected in generated output')
+PY
+
+      - name: Commit generated specs
+        if: success()
+        run: |
+          git config user.name "speckit-bot"
+          git config user.email "speckit-bot@example.com"
+          git checkout -b speckit-generated/$(date +%Y%m%d-%H%M%S)
+          git add generated_specs || true
+          git commit -m "chore(speckit): add generated specs" || echo 'no changes'
+          git push --set-upstream origin HEAD

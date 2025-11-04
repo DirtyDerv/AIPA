@@ -1,0 +1,105 @@
+{
+  "start_time": "2025-11-02T18:16:12.535571",
+  "end_time": "2025-11-02T18:16:22.409556",
+  "total_tests": 16,
+  "passed": 16,
+  "failed": 0,
+  "results": [
+    {
+      "test": "n8n_connection",
+      "success": true,
+      "details": "Connected successfully, found 13 workflows",
+      "timestamp": "2025-11-02T18:16:12.579444+00:00"
+    },
+    {
+      "test": "webhook_personal",
+      "success": true,
+      "details": "#personal webhook working",
+      "timestamp": "2025-11-02T18:16:13.208322+00:00"
+    },
+    {
+      "test": "webhook_woodys-creations",
+      "success": true,
+      "details": "#woodys-creations webhook working",
+      "timestamp": "2025-11-02T18:16:14.564141+00:00"
+    },
+    {
+      "test": "webhook_dj-business",
+      "success": true,
+      "details": "#dj-business webhook working",
+      "timestamp": "2025-11-02T18:16:15.628434+00:00"
+    },
+    {
+      "test": "webhook_bmf-work",
+      "success": true,
+      "details": "#bmf-work webhook working",
+      "timestamp": "2025-11-02T18:16:16.712512+00:00"
+    },
+    {
+      "test": "webhook_the-top-odd",
+      "success": true,
+      "details": "#the-top-odd webhook working",
+      "timestamp": "2025-11-02T18:16:17.706192+00:00"
+    },
+    {
+      "test": "webhook_email-alerts",
+      "success": true,
+      "details": "#email-alerts webhook working",
+      "timestamp": "2025-11-02T18:16:18.771104+00:00"
+    },
+    {
+      "test": "webhook_calendar-updates",
+      "success": true,
+      "details": "#calendar-updates webhook working",
+      "timestamp": "2025-11-02T18:16:19.745561+00:00"
+    },
+    {
+      "test": "webhook_task-reminders",
+      "success": true,
+      "details": "#task-reminders webhook working",
+      "timestamp": "2025-11-02T18:16:20.711299+00:00"
+    },
+    {
+      "test": "webhook_reports",
+      "success": true,
+      "details": "#reports webhook working",
+      "timestamp": "2025-11-02T18:16:21.722425+00:00"
+    },
+    {
+      "test": "all_webhooks",
+      "success": true,
+      "details": "All 9 Discord webhooks working perfectly",
+      "timestamp": "2025-11-02T18:16:22.222765+00:00"
+    },
+    {
+      "test": "workflow_create",
+      "success": true,
+      "details": "Test workflow created: cNEpNmIC5XEHgp78",
+      "timestamp": "2025-11-02T18:16:22.281242+00:00"
+    },
+    {
+      "test": "workflow_activate",
+      "success": true,
+      "details": "Test workflow activated",
+      "timestamp": "2025-11-02T18:16:22.319874+00:00"
+    },
+    {
+      "test": "workflow_deactivate",
+      "success": true,
+      "details": "Test workflow deactivated",
+      "timestamp": "2025-11-02T18:16:22.351454+00:00"
+    },
+    {
+      "test": "workflow_delete",
+      "success": true,
+      "details": "Test workflow deleted",
+      "timestamp": "2025-11-02T18:16:22.381074+00:00"
+    },
+    {
+      "test": "existing_migrations",
+      "success": true,
+      "details": "Found 3 Discord workflows, 2 active",
+      "timestamp": "2025-11-02T18:16:22.408541+00:00"
+    }
+  ]
+}

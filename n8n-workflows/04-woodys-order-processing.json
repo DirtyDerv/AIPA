@@ -1,0 +1,676 @@
+{
+  "name": "AIPA - Woody's Creations Order Processing",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/woodys"
+            }
+          ]
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Woody's Command Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "\ud83c\udf81 **Woody's Creations UK**\\n\\nWhat would you like to do?\\n\\n1\ufe0f\u20e3 View pending orders\\n2\ufe0f\u20e3 View in-production orders\\n3\ufe0f\u20e3 Mark order complete\\n4\ufe0f\u20e3 Create new order\\n5\ufe0f\u20e3 Track materials inventory\\n6\ufe0f\u20e3 Generate invoice\\n7\ufe0f\u20e3 Order analytics\\n\\nReply with a number.",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "reply_markup": {
+            "keyboard": [
+              [
+                "1 - Pending Orders",
+                "2 - In Production"
+              ],
+              [
+                "3 - Complete Order",
+                "4 - New Order"
+              ],
+              [
+                "5 - Inventory",
+                "6 - Invoice"
+              ],
+              [
+                "7 - Analytics"
+              ]
+            ],
+            "one_time_keyboard": true,
+            "resize_keyboard": true
+          }
+        }
+      },
+      "id": "show-woodys-menu",
+      "name": "Show Woody's Menu",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM woodys_orders WHERE status = 'pending' ORDER BY order_date ASC",
+        "additionalFields": {}
+      },
+      "id": "get-pending-orders",
+      "name": "Get Pending Orders",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        650,
+        200
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format pending orders\nconst orders = items;\n\nif (orders.length === 0) {\n  return [{\n    json: {\n      message: \"\ud83d\udced No pending orders\"\n    }\n  }];\n}\n\nlet message = \"\ud83c\udf81 **Pending Orders**\\n\\n\";\nlet totalValue = 0;\n\nfor (const order of orders) {\n  const orderDate = new Date(order.json.order_date).toLocaleDateString();\n  const daysAgo = Math.floor((new Date() - new Date(order.json.order_date)) / (1000 * 60 * 60 * 24));\n  \n  message += `**Order #${order.json.id}**\\n`;\n  message += `\ud83d\udcc5 ${orderDate} (${daysAgo} days ago)\\n`;\n  message += `\ud83d\udc64 ${order.json.customer_name}\\n`;\n  message += `\ud83d\udce6 ${order.json.product_type}: ${order.json.custom_text || order.json.description}\\n`;\n  message += `\ud83d\udcb0 \u00a3${order.json.price}\\n`;\n  if (order.json.deadline) {\n    const deadline = new Date(order.json.deadline).toLocaleDateString();\n    message += `\u23f0 Deadline: ${deadline}\\n`;\n  }\n  message += `\\n`;\n  \n  totalValue += parseFloat(order.json.price || 0);\n}\n\nmessage += `\\n\ud83d\udcb5 **Total Value:** \u00a3${totalValue.toFixed(2)}`;\n\nreturn [{\n  json: {\n    message: message,\n    order_count: orders.length,\n    total_value: totalValue\n  }\n}];"
+      },
+      "id": "format-pending-orders",
+      "name": "Format Pending Orders",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Woody's Command Trigger\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-pending-orders",
+      "name": "Send Pending Orders",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM woodys_orders WHERE status = 'in_production' ORDER BY deadline ASC",
+        "additionalFields": {}
+      },
+      "id": "get-in-production",
+      "name": "Get In-Production Orders",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format in-production orders\nconst orders = items;\n\nif (orders.length === 0) {\n  return [{\n    json: {\n      message: \"\ud83d\udced No orders in production\"\n    }\n  }];\n}\n\nlet message = \"\ud83d\udd28 **Orders In Production**\\n\\n\";\n\nfor (const order of orders) {\n  const startDate = new Date(order.json.production_started_at).toLocaleDateString();\n  const daysInProd = Math.floor((new Date() - new Date(order.json.production_started_at)) / (1000 * 60 * 60 * 24));\n  \n  message += `**Order #${order.json.id}**\\n`;\n  message += `\ud83d\udc64 ${order.json.customer_name}\\n`;\n  message += `\ud83d\udce6 ${order.json.product_type}\\n`;\n  message += `\ud83d\udd28 Started: ${startDate} (${daysInProd} days)\\n`;\n  message += `\ud83d\udcb0 \u00a3${order.json.price}\\n`;\n  \n  if (order.json.deadline) {\n    const deadline = new Date(order.json.deadline);\n    const daysUntil = Math.ceil((deadline - new Date()) / (1000 * 60 * 60 * 24));\n    const deadlineStr = deadline.toLocaleDateString();\n    const urgency = daysUntil <= 2 ? '\ud83d\udd34' : daysUntil <= 5 ? '\ud83d\udfe1' : '\ud83d\udfe2';\n    message += `${urgency} Deadline: ${deadlineStr} (${daysUntil} days)\\n`;\n  }\n  message += `\\n`;\n}\n\nreturn [{\n  json: {\n    message: message,\n    order_count: orders.length\n  }\n}];"
+      },
+      "id": "format-in-production",
+      "name": "Format In-Production",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Woody's Command Trigger\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-in-production",
+      "name": "Send In-Production",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Woody's Command Trigger\"].json.message.chat.id }}",
+        "text": "\u2705 **Mark Order Complete**\\n\\nPlease provide the Order ID to mark as complete.",
+        "additionalFields": {}
+      },
+      "id": "ask-order-id",
+      "name": "Ask for Order ID",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        650,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "wait-for-order-id",
+      "name": "Wait for Order ID",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        850,
+        400
+      ],
+      "webhookId": "woodys-order-complete"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "woodys_orders",
+        "updateKey": "id",
+        "columns": "status, completed_at",
+        "additionalFields": {}
+      },
+      "id": "update-order-complete",
+      "name": "Update Order to Complete",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        400
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Wait for Order ID\"].json.message.chat.id }}",
+        "text": "=\u2705 Order #{{ $node[\"Wait for Order ID\"].json.message.text }} marked as complete!\\n\\nWould you like to:\\n1. Send completion email to customer\\n2. Generate invoice\\n3. Back to menu",
+        "additionalFields": {}
+      },
+      "id": "confirm-complete",
+      "name": "Confirm Complete",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Woody's Command Trigger\"].json.message.chat.id }}",
+        "text": "\ud83d\udcdd **Create New Order**\\n\\nPlease provide order details:\\n\\n1. Customer name\\n2. Email\\n3. Phone\\n4. Product type (sign/plaque/gift/custom)\\n5. Description or custom text\\n6. Material (wood/acrylic/bamboo)\\n7. Size (small/medium/large)\\n8. Price (\u00a3)\\n9. Deadline (YYYY-MM-DD)\\n\\nExample:\\nJohn Smith\\njohn@email.com\\n07123456789\\nsign\\nWelcome Home\\nwood\\nmedium\\n25\\n2025-12-15",
+        "additionalFields": {}
+      },
+      "id": "ask-new-order",
+      "name": "Ask for New Order Details",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        650,
+        500
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "wait-for-order-details",
+      "name": "Wait for Order Details",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        850,
+        500
+      ],
+      "webhookId": "woodys-new-order"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse new order details\nconst input = items[0].json.message.text;\nconst lines = input.split('\\n').map(l => l.trim()).filter(l => l);\n\nif (lines.length < 9) {\n  return [{\n    json: {\n      error: true,\n      message: \"\u274c Missing information. Please provide all 9 items.\"\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    error: false,\n    customer_name: lines[0],\n    customer_email: lines[1],\n    customer_phone: lines[2],\n    product_type: lines[3],\n    description: lines[4],\n    custom_text: lines[4],\n    material: lines[5],\n    size: lines[6],\n    price: parseFloat(lines[7]),\n    deadline: lines[8],\n    status: 'pending',\n    order_date: new Date().toISOString().split('T')[0]\n  }\n}];"
+      },
+      "id": "parse-order-details",
+      "name": "Parse Order Details",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "woodys_orders",
+        "columns": "customer_name, customer_email, customer_phone, product_type, description, custom_text, material, size, price, deadline, status, order_date",
+        "additionalFields": {}
+      },
+      "id": "save-new-order",
+      "name": "Save New Order",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        500
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=AIzaSyBBo5QRTxtMrxIkMrg4_1ULfKHNIZr3zdE",
+        "options": {},
+        "headerParametersJson": "={\n  \"Content-Type\": \"application/json\"\n}",
+        "bodyParametersJson": "={\n  \"generationConfig\": {\"temperature\": 0.7, \"maxOutputTokens\": 2048},\n  \"maxOutputTokens\": 1500,\n  \"contents\": [\n    {\n      \"parts\": [{\"text\": \"Create a professional order confirmation email for Woody's Creations UK.\\n\\nOrder Details:\\nCustomer: {{ $json.customer_name }}\\nProduct: {{ $json.product_type }}\\nDescription: {{ $json.description }}\\nMaterial: {{ $json.material }}\\nSize: {{ $json.size }}\\nPrice: \u00a3{{ $json.price }}\\nDeadline: {{ $json.deadline }}\\n\\nWrite a warm, professional confirmation email that:\\n- Thanks them for their order\\n- Confirms the details\\n- Explains the next steps\\n- Mentions estimated delivery\\n- Provides contact info\\n- Signs from Woody and Angie at Woody's Creations UK\\n\\nReturn only the email body.\"\n    }\n  ]\n}"
+      },
+      "id": "generate-confirmation-email",
+      "name": "Generate Confirmation Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1450,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "operation": "create",
+        "message": "={{ $node[\"Generate Confirmation Email\"].json.content[0].text }}",
+        "subject": "=Order Confirmation - Woody's Creations UK",
+        "toList": "={{ $node[\"Parse Order Details\"].json.customer_email }}",
+        "options": {}
+      },
+      "id": "create-confirmation-draft",
+      "name": "Create Confirmation Draft",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        1650,
+        500
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Wait for Order Details\"].json.message.chat.id }}",
+        "text": "=\u2705 **Order Created Successfully!**\\n\\n**Order Details:**\\n\ud83d\udc64 {{ $node[\"Parse Order Details\"].json.customer_name }}\\n\ud83d\udce6 {{ $node[\"Parse Order Details\"].json.product_type }}\\n\ud83d\udcb0 \u00a3{{ $node[\"Parse Order Details\"].json.price }}\\n\u23f0 Deadline: {{ $node[\"Parse Order Details\"].json.deadline }}\\n\\n\u2709\ufe0f Confirmation email draft created in Gmail\\n\ud83d\udcca Order saved to database\\n\\nOrder ID: {{ $node[\"Save New Order\"].json.id }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-order-confirmation",
+      "name": "Send Order Confirmation to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1850,
+        500
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT product_type, COUNT(*) as count, SUM(price) as revenue, AVG(price) as avg_price FROM woodys_orders WHERE order_date >= DATE_SUB(CURRENT_DATE, INTERVAL 30 DAY) GROUP BY product_type ORDER BY revenue DESC",
+        "additionalFields": {}
+      },
+      "id": "get-analytics",
+      "name": "Get 30-Day Analytics",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        650,
+        600
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format analytics\nconst data = items;\n\nif (data.length === 0) {\n  return [{\n    json: {\n      message: \"\ud83d\udced No orders in the last 30 days\"\n    }\n  }];\n}\n\nlet message = \"\ud83d\udcca **Woody's Creations Analytics (30 Days)**\\n\\n\";\nlet totalRevenue = 0;\nlet totalOrders = 0;\n\nfor (const item of data) {\n  const count = item.json.count;\n  const revenue = parseFloat(item.json.revenue || 0);\n  const avgPrice = parseFloat(item.json.avg_price || 0);\n  \n  message += `**${item.json.product_type}**\\n`;\n  message += `\ud83d\udce6 Orders: ${count}\\n`;\n  message += `\ud83d\udcb0 Revenue: \u00a3${revenue.toFixed(2)}\\n`;\n  message += `\ud83d\udcca Avg Price: \u00a3${avgPrice.toFixed(2)}\\n`;\n  message += `\\n`;\n  \n  totalRevenue += revenue;\n  totalOrders += count;\n}\n\nmessage += `\\n**TOTALS**\\n`;\nmessage += `\ud83d\udce6 Total Orders: ${totalOrders}\\n`;\nmessage += `\ud83d\udcb5 Total Revenue: \u00a3${totalRevenue.toFixed(2)}\\n`;\nmessage += `\ud83d\udcca Average Order: \u00a3${(totalRevenue / totalOrders).toFixed(2)}`;\n\nreturn [{\n  json: {\n    message: message,\n    total_orders: totalOrders,\n    total_revenue: totalRevenue\n  }\n}];"
+      },
+      "id": "format-analytics",
+      "name": "Format Analytics",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Woody's Command Trigger\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-analytics",
+      "name": "Send Analytics",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        600
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Woody's Command Trigger": {
+      "main": [
+        [
+          {
+            "node": "Show Woody's Menu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Show Woody's Menu": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Orders",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get In-Production Orders",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ask for Order ID",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ask for New Order Details",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get 30-Day Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Orders": {
+      "main": [
+        [
+          {
+            "node": "Format Pending Orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Pending Orders": {
+      "main": [
+        [
+          {
+            "node": "Send Pending Orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get In-Production Orders": {
+      "main": [
+        [
+          {
+            "node": "Format In-Production",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format In-Production": {
+      "main": [
+        [
+          {
+            "node": "Send In-Production",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask for Order ID": {
+      "main": [
+        [
+          {
+            "node": "Wait for Order ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Order ID": {
+      "main": [
+        [
+          {
+            "node": "Update Order to Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Order to Complete": {
+      "main": [
+        [
+          {
+            "node": "Confirm Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask for New Order Details": {
+      "main": [
+        [
+          {
+            "node": "Wait for Order Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Order Details": {
+      "main": [
+        [
+          {
+            "node": "Parse Order Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Order Details": {
+      "main": [
+        [
+          {
+            "node": "Save New Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save New Order": {
+      "main": [
+        [
+          {
+            "node": "Generate Confirmation Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Confirmation Email": {
+      "main": [
+        [
+          {
+            "node": "Create Confirmation Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Confirmation Draft": {
+      "main": [
+        [
+          {
+            "node": "Send Order Confirmation to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get 30-Day Analytics": {
+      "main": [
+        [
+          {
+            "node": "Format Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Analytics": {
+      "main": [
+        [
+          {
+            "node": "Send Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-11-01T18:00:00.000Z",
+  "versionId": "1"
+}

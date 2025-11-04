@@ -1,0 +1,68 @@
+{
+  "migration_type": "main_interface",
+  "start_time": "2025-11-02T18:06:53.400879",
+  "success": false,
+  "workflow_id": "37bzjMV88aYgjcCK",
+  "steps": [
+    {
+      "step": "analyze_original",
+      "success": true,
+      "details": "Found 20 nodes, 3 Telegram nodes to migrate",
+      "timestamp": "2025-11-02T18:06:44.680358+00:00"
+    },
+    {
+      "step": "create_workflow",
+      "success": true,
+      "details": "Created Discord main interface: 37bzjMV88aYgjcCK",
+      "timestamp": "2025-11-02T18:06:45.240182+00:00"
+    },
+    {
+      "step": "activate_for_testing",
+      "success": true,
+      "details": "Workflow activated for testing",
+      "timestamp": "2025-11-02T18:06:45.283641+00:00"
+    },
+    {
+      "step": "test_command_1",
+      "success": false,
+      "details": "Command '/help' failed: 404",
+      "timestamp": "2025-11-02T18:06:47.297543+00:00"
+    },
+    {
+      "step": "test_command_2",
+      "success": false,
+      "details": "Command '/email check' failed: 404",
+      "timestamp": "2025-11-02T18:06:48.309738+00:00"
+    },
+    {
+      "step": "test_command_3",
+      "success": false,
+      "details": "Command '/calendar today' failed: 404",
+      "timestamp": "2025-11-02T18:06:49.342160+00:00"
+    },
+    {
+      "step": "test_command_4",
+      "success": false,
+      "details": "Command '/woodys orders' failed: 404",
+      "timestamp": "2025-11-02T18:06:50.353094+00:00"
+    },
+    {
+      "step": "test_command_5",
+      "success": false,
+      "details": "Command '/dj bookings' failed: 404",
+      "timestamp": "2025-11-02T18:06:51.378025+00:00"
+    },
+    {
+      "step": "test_command_6",
+      "success": false,
+      "details": "Command '/reports daily' failed: 404",
+      "timestamp": "2025-11-02T18:06:52.399743+00:00"
+    },
+    {
+      "step": "migration_aborted",
+      "success": false,
+      "details": "Webhook tests failed - aborting migration",
+      "timestamp": "2025-11-02T18:06:53.400674+00:00"
+    }
+  ]
+}

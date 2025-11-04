@@ -1,0 +1,47 @@
+====================================================================
+COMMANDS TO RUN ON THE WINDOWS 11 MACHINE (192.168.0.14)
+====================================================================
+
+IMPORTANT: Run these commands AFTER you remote into 192.168.0.14
+            NOT on your current machine!
+
+--------------------------------------------------------------------
+STEP 1: Stop the current container
+--------------------------------------------------------------------
+
+docker stop n8n
+
+--------------------------------------------------------------------
+STEP 2: Remove the old container
+--------------------------------------------------------------------
+
+docker rm n8n
+
+--------------------------------------------------------------------
+STEP 3: Start new container with WEBHOOK_URL
+--------------------------------------------------------------------
+
+Copy this ENTIRE command (it's ONE line, safe to paste in PowerShell):
+
+docker run --hostname=5cbd5e6e12a6 --user=node --env=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin --env=NODE_VERSION=22.18.0 --env=YARN_VERSION=1.22.22 --env=NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu --env=NODE_ENV=production --env=N8N_RELEASE_TYPE=stable --env=SHELL=/bin/sh --env=WEBHOOK_URL=https://uniterative-futile-charmain.ngrok-free.dev --network=bridge --workdir=/home/node -p 5678:5678 --restart=always --name=n8n --label='org.opencontainers.image.description=Workflow Automation Tool' --label='org.opencontainers.image.source=https://github.com/n8n-io/n8n' --label='org.opencontainers.image.title=n8n' --label='org.opencontainers.image.url=https://n8n.io' --label='org.opencontainers.image.version=1.117.3' --runtime=runc -d n8nio/n8n:latest
+
+--------------------------------------------------------------------
+STEP 4: Verify it's running
+--------------------------------------------------------------------
+
+docker ps
+
+You should see the n8n container listed and running.
+
+--------------------------------------------------------------------
+DONE! Now test it:
+--------------------------------------------------------------------
+
+1. Open http://192.168.0.14:5678 in a browser
+2. Go to: Workflows → "AIPA - Telegram Main Interface"
+3. Click the "Telegram Trigger" node
+4. Check the webhook URL shows HTTPS
+5. Toggle to activate the workflow
+6. Send /start to your Telegram bot
+
+====================================================================

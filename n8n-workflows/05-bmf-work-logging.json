@@ -1,0 +1,581 @@
+{
+  "name": "AIPA - BMF Work Logging",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/bmf"
+            }
+          ]
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "BMF Command Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "\ud83d\udcbc **BMF Work Management**\\n\\nWhat would you like to do?\\n\\n1\ufe0f\u20e3 Log hours worked today\\n2\ufe0f\u20e3 View this week's hours\\n3\ufe0f\u20e3 View this month's hours\\n4\ufe0f\u20e3 Add project task\\n5\ufe0f\u20e3 View active projects\\n6\ufe0f\u20e3 Generate timesheet\\n7\ufe0f\u20e3 Submit invoice\\n\\nReply with a number.",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "reply_markup": {
+            "keyboard": [
+              [
+                "1 - Log Hours",
+                "2 - This Week"
+              ],
+              [
+                "3 - This Month",
+                "4 - Add Task"
+              ],
+              [
+                "5 - Projects",
+                "6 - Timesheet"
+              ],
+              [
+                "7 - Invoice"
+              ]
+            ],
+            "one_time_keyboard": true,
+            "resize_keyboard": true
+          }
+        }
+      },
+      "id": "show-bmf-menu",
+      "name": "Show BMF Menu",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"BMF Command Trigger\"].json.message.chat.id }}",
+        "text": "\u23f1\ufe0f **Log Hours Worked**\\n\\nPlease provide:\\n\\n1. Hours worked (e.g., 7.5)\\n2. Project/task description\\n3. Date (YYYY-MM-DD) or 'today'\\n\\nExample:\\n7.5\\nWebsite maintenance and bug fixes\\ntoday",
+        "additionalFields": {}
+      },
+      "id": "ask-hours-details",
+      "name": "Ask for Hours Details",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        650,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "wait-for-hours",
+      "name": "Wait for Hours Input",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        850,
+        200
+      ],
+      "webhookId": "bmf-log-hours"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse hours input\nconst input = items[0].json.message.text;\nconst lines = input.split('\\n').map(l => l.trim()).filter(l => l);\n\nif (lines.length < 2) {\n  return [{\n    json: {\n      error: true,\n      message: \"\u274c Please provide hours and description\"\n    }\n  }];\n}\n\nconst hours = parseFloat(lines[0]);\nconst description = lines[1];\nlet workDate = lines[2] || 'today';\n\n// Parse date\nif (workDate.toLowerCase() === 'today') {\n  workDate = new Date().toISOString().split('T')[0];\n} else if (workDate.toLowerCase() === 'yesterday') {\n  const yesterday = new Date();\n  yesterday.setDate(yesterday.getDate() - 1);\n  workDate = yesterday.toISOString().split('T')[0];\n}\n\n// BMF hourly rate (configure this)\nconst hourlyRate = 35; // \u00a335/hour\nconst earnings = hours * hourlyRate;\n\nreturn [{\n  json: {\n    error: false,\n    hours_worked: hours,\n    task_description: description,\n    work_date: workDate,\n    hourly_rate: hourlyRate,\n    earnings: earnings,\n    status: 'logged'\n  }\n}];"
+      },
+      "id": "parse-hours",
+      "name": "Parse Hours Entry",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "bmf_work_log",
+        "columns": "work_date, hours_worked, task_description, hourly_rate, earnings, status",
+        "additionalFields": {}
+      },
+      "id": "save-hours-db",
+      "name": "Save Hours to Database",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        200
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Wait for Hours Input\"].json.message.chat.id }}",
+        "text": "=\u2705 **Hours Logged Successfully!**\\n\\n\ud83d\udcc5 Date: {{ $node[\"Parse Hours Entry\"].json.work_date }}\\n\u23f1\ufe0f Hours: {{ $node[\"Parse Hours Entry\"].json.hours_worked }}\\n\ud83d\udcb0 Earnings: \u00a3{{ $node[\"Parse Hours Entry\"].json.earnings }}\\n\ud83d\udcdd Task: {{ $node[\"Parse Hours Entry\"].json.task_description }}\\n\\nLogged to BMF work log.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "confirm-hours-logged",
+      "name": "Confirm Hours Logged",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT work_date, hours_worked, task_description, earnings FROM bmf_work_log WHERE work_date >= DATE_SUB(CURRENT_DATE, INTERVAL 7 DAY) ORDER BY work_date DESC",
+        "additionalFields": {}
+      },
+      "id": "get-week-hours",
+      "name": "Get This Week's Hours",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format weekly hours\nconst entries = items;\n\nif (entries.length === 0) {\n  return [{\n    json: {\n      message: \"\ud83d\udced No hours logged this week\"\n    }\n  }];\n}\n\nlet message = \"\ud83d\udcca **This Week's Hours - BMF**\\n\\n\";\nlet totalHours = 0;\nlet totalEarnings = 0;\n\nfor (const entry of entries) {\n  const date = new Date(entry.json.work_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });\n  const hours = parseFloat(entry.json.hours_worked || 0);\n  const earnings = parseFloat(entry.json.earnings || 0);\n  \n  message += `**${date}**\\n`;\n  message += `\u23f1\ufe0f ${hours} hours\\n`;\n  message += `\ud83d\udcdd ${entry.json.task_description}\\n`;\n  message += `\ud83d\udcb0 \u00a3${earnings.toFixed(2)}\\n`;\n  message += `\\n`;\n  \n  totalHours += hours;\n  totalEarnings += earnings;\n}\n\nmessage += `**WEEK TOTAL**\\n`;\nmessage += `\u23f1\ufe0f ${totalHours} hours\\n`;\nmessage += `\ud83d\udcb5 \u00a3${totalEarnings.toFixed(2)}`;\n\nreturn [{\n  json: {\n    message: message,\n    total_hours: totalHours,\n    total_earnings: totalEarnings\n  }\n}];"
+      },
+      "id": "format-week-hours",
+      "name": "Format Week Hours",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"BMF Command Trigger\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-week-hours",
+      "name": "Send Week Hours",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT work_date, hours_worked, task_description, earnings FROM bmf_work_log WHERE work_date >= DATE_SUB(CURRENT_DATE, INTERVAL 30 DAY) ORDER BY work_date DESC",
+        "additionalFields": {}
+      },
+      "id": "get-month-hours",
+      "name": "Get This Month's Hours",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        650,
+        400
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format monthly hours with weekly breakdown\nconst entries = items;\n\nif (entries.length === 0) {\n  return [{\n    json: {\n      message: \"\ud83d\udced No hours logged this month\"\n    }\n  }];\n}\n\nlet message = \"\ud83d\udcca **This Month's Hours - BMF**\\n\\n\";\nlet totalHours = 0;\nlet totalEarnings = 0;\n\n// Group by week\nconst weeks = {};\n\nfor (const entry of entries) {\n  const date = new Date(entry.json.work_date);\n  const weekStart = new Date(date);\n  weekStart.setDate(date.getDate() - date.getDay());\n  const weekKey = weekStart.toISOString().split('T')[0];\n  \n  if (!weeks[weekKey]) {\n    weeks[weekKey] = {\n      hours: 0,\n      earnings: 0,\n      entries: []\n    };\n  }\n  \n  const hours = parseFloat(entry.json.hours_worked || 0);\n  const earnings = parseFloat(entry.json.earnings || 0);\n  \n  weeks[weekKey].hours += hours;\n  weeks[weekKey].earnings += earnings;\n  weeks[weekKey].entries.push(entry.json);\n  \n  totalHours += hours;\n  totalEarnings += earnings;\n}\n\n// Format output\nconst weekKeys = Object.keys(weeks).sort().reverse();\n\nfor (const weekKey of weekKeys) {\n  const weekData = weeks[weekKey];\n  const weekDate = new Date(weekKey).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });\n  \n  message += `**Week of ${weekDate}**\\n`;\n  message += `\u23f1\ufe0f ${weekData.hours} hours | \ud83d\udcb0 \u00a3${weekData.earnings.toFixed(2)}\\n`;\n  message += `\\n`;\n}\n\nmessage += `\\n**MONTH TOTAL**\\n`;\nmessage += `\u23f1\ufe0f ${totalHours} hours\\n`;\nmessage += `\ud83d\udcb5 \u00a3${totalEarnings.toFixed(2)}\\n`;\nmessage += `\ud83d\udcca Avg per week: \u00a3${(totalEarnings / weekKeys.length).toFixed(2)}`;\n\nreturn [{\n  json: {\n    message: message,\n    total_hours: totalHours,\n    total_earnings: totalEarnings,\n    weeks_worked: weekKeys.length\n  }\n}];"
+      },
+      "id": "format-month-hours",
+      "name": "Format Month Hours",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"BMF Command Trigger\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-month-hours",
+      "name": "Send Month Hours",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"BMF Command Trigger\"].json.message.chat.id }}",
+        "text": "\ud83d\udcc4 **Generate BMF Timesheet**\\n\\nPlease specify the period:\\n\\n1. Start date (YYYY-MM-DD)\\n2. End date (YYYY-MM-DD)\\n\\nExample:\\n2025-11-01\\n2025-11-30",
+        "additionalFields": {}
+      },
+      "id": "ask-timesheet-period",
+      "name": "Ask Timesheet Period",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        650,
+        500
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "wait-for-timesheet-period",
+      "name": "Wait for Timesheet Period",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        850,
+        500
+      ],
+      "webhookId": "bmf-timesheet"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse timesheet period\nconst input = items[0].json.message.text;\nconst lines = input.split('\\n').map(l => l.trim()).filter(l => l);\n\nif (lines.length < 2) {\n  return [{\n    json: {\n      error: true,\n      message: \"\u274c Please provide start and end dates\"\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    error: false,\n    start_date: lines[0],\n    end_date: lines[1]\n  }\n}];"
+      },
+      "id": "parse-timesheet-period",
+      "name": "Parse Timesheet Period",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT * FROM bmf_work_log WHERE work_date BETWEEN '{{ $json.start_date }}' AND '{{ $json.end_date }}' ORDER BY work_date ASC",
+        "additionalFields": {}
+      },
+      "id": "get-timesheet-data",
+      "name": "Get Timesheet Data",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        500
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=AIzaSyBBo5QRTxtMrxIkMrg4_1ULfKHNIZr3zdE",
+        "options": {},
+        "headerParametersJson": "={\n  \"Content-Type\": \"application/json\"\n}",
+        "bodyParametersJson": "={\n  \"generationConfig\": {\"temperature\": 0.7, \"maxOutputTokens\": 2048},\n  \"maxOutputTokens\": 2048,\n  \"contents\": [\n    {\n      \"parts\": [{\"text\": \"Create a professional timesheet document for BMF work.\\n\\nPeriod: {{ $node[\"Parse Timesheet Period\"].json.start_date }} to {{ $node[\"Parse Timesheet Period\"].json.end_date }}\\n\\nWork Log:\\n{{ JSON.stringify($json) }}\\n\\nFormat as a professional timesheet with:\\n- Header with period\\n- Table of dates, hours, tasks\\n- Daily subtotals\\n- Weekly subtotals\\n- Total hours and earnings\\n- Professional formatting\\n\\nReturn as formatted text suitable for email or PDF.\"\n    }\n  ]\n}"
+      },
+      "id": "generate-timesheet",
+      "name": "Generate Timesheet (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1450,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Wait for Timesheet Period\"].json.message.chat.id }}",
+        "text": "=\ud83d\udcc4 **BMF Timesheet Generated**\\n\\n{{ $json.content[0].text }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-timesheet",
+      "name": "Send Timesheet",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1650,
+        500
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "BMF Command Trigger": {
+      "main": [
+        [
+          {
+            "node": "Show BMF Menu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Show BMF Menu": {
+      "main": [
+        [
+          {
+            "node": "Ask for Hours Details",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get This Week's Hours",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get This Month's Hours",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ask Timesheet Period",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask for Hours Details": {
+      "main": [
+        [
+          {
+            "node": "Wait for Hours Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Hours Input": {
+      "main": [
+        [
+          {
+            "node": "Parse Hours Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Hours Entry": {
+      "main": [
+        [
+          {
+            "node": "Save Hours to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Hours to Database": {
+      "main": [
+        [
+          {
+            "node": "Confirm Hours Logged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get This Week's Hours": {
+      "main": [
+        [
+          {
+            "node": "Format Week Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Week Hours": {
+      "main": [
+        [
+          {
+            "node": "Send Week Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get This Month's Hours": {
+      "main": [
+        [
+          {
+            "node": "Format Month Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Month Hours": {
+      "main": [
+        [
+          {
+            "node": "Send Month Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask Timesheet Period": {
+      "main": [
+        [
+          {
+            "node": "Wait for Timesheet Period",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Timesheet Period": {
+      "main": [
+        [
+          {
+            "node": "Parse Timesheet Period",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Timesheet Period": {
+      "main": [
+        [
+          {
+            "node": "Get Timesheet Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Timesheet Data": {
+      "main": [
+        [
+          {
+            "node": "Generate Timesheet (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Timesheet (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Send Timesheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-11-01T18:00:00.000Z",
+  "versionId": "1"
+}
