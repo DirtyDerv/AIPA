@@ -1,0 +1,626 @@
+{
+  "name": "AIPA - Email Processing with AI",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "labelIds": [
+            "INBOX",
+            "UNREAD"
+          ]
+        },
+        "simplify": false
+      },
+      "id": "gmail-trigger",
+      "name": "Gmail Trigger - Check New Emails",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract email data\nconst email = items[0].json;\n\nreturn [{\n  json: {\n    email_id: email.id,\n    thread_id: email.threadId,\n    from: email.payload.headers.find(h => h.name === 'From')?.value || '',\n    to: email.payload.headers.find(h => h.name === 'To')?.value || '',\n    subject: email.payload.headers.find(h => h.name === 'Subject')?.value || '',\n    date: email.payload.headers.find(h => h.name === 'Date')?.value || '',\n    body: email.snippet || '',\n    labels: email.labelIds || [],\n    full_email: email\n  }\n}];"
+      },
+      "id": "parse-email",
+      "name": "Parse Email Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=AIzaSyBBo5QRTxtMrxIkMrg4_1ULfKHNIZr3zdE",
+        "options": {},
+        "headerParametersJson": "={\n  \"Content-Type\": \"application/json\"\n}",
+        "bodyParametersJson": "={\n  \"generationConfig\": {\"temperature\": 0.7, \"maxOutputTokens\": 2048},\n  \"maxOutputTokens\": 1024,\n  \"contents\": [\n    {\n      \"parts\": [{\"text\": \"Analyze this email and classify it. Return ONLY a JSON object with no markdown formatting.\\n\\nEmail:\\nFrom: {{ $json.from }}\\nSubject: {{ $json.subject }}\\nBody: {{ $json.body }}\\n\\nClassify into:\\n1. business_context: 'woodys_creations', 'dj_business', 'bmf_work', 'pub', 'personal', 'unknown'\\n2. category: 'order', 'inquiry', 'booking', 'invoice', 'support', 'marketing', 'personal', 'spam'\\n3. priority: 'urgent', 'high', 'medium', 'low'\\n4. sentiment: 'positive', 'neutral', 'negative'\\n5. requires_response: true or false\\n6. summary: brief 1-sentence summary\\n7. suggested_action: what to do next\\n\\nReturn JSON only:\"\n    }\n  ]\n}"
+      },
+      "id": "ai-classify-email",
+      "name": "AI Classify Email (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract Claude's classification from response\nconst response = items[0].json.candidates[0].content.parts[0].text;\n\n// Parse the JSON response\nlet classification;\ntry {\n  // Remove markdown code blocks if present\n  const cleanResponse = response.replace(/```json\\n?|```\\n?/g, '').trim();\n  classification = JSON.parse(cleanResponse);\n} catch (e) {\n  // Fallback classification\n  classification = {\n    business_context: 'unknown',\n    category: 'inquiry',\n    priority: 'medium',\n    sentiment: 'neutral',\n    requires_response: true,\n    summary: 'Email classification failed',\n    suggested_action: 'Manual review needed'\n  };\n}\n\n// Merge with original email data\nconst emailData = $node[\"Parse Email Data\"].json;\n\nreturn [{\n  json: {\n    ...emailData,\n    ai_classification: classification,\n    processed_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse-ai-response",
+      "name": "Parse AI Classification",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.ai_classification.business_context }}",
+              "operation": "equals",
+              "value2": "woodys_creations"
+            }
+          ]
+        }
+      },
+      "id": "route-woodys",
+      "name": "Route to Woody's",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.ai_classification.business_context }}",
+              "operation": "equals",
+              "value2": "dj_business"
+            }
+          ]
+        }
+      },
+      "id": "route-dj",
+      "name": "Route to DJ",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.ai_classification.business_context }}",
+              "operation": "equals",
+              "value2": "bmf_work"
+            }
+          ]
+        }
+      },
+      "id": "route-bmf",
+      "name": "Route to BMF",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.ai_classification.business_context }}",
+              "operation": "equals",
+              "value2": "pub"
+            }
+          ]
+        }
+      },
+      "id": "route-pub",
+      "name": "Route to Pub",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "operation": "addLabel",
+        "messageId": "={{ $json.email_id }}",
+        "labelIds": [
+          "Label_Woodys"
+        ]
+      },
+      "id": "label-woodys",
+      "name": "Label: Woody's Creations",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        200
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "operation": "addLabel",
+        "messageId": "={{ $json.email_id }}",
+        "labelIds": [
+          "Label_DJ"
+        ]
+      },
+      "id": "label-dj",
+      "name": "Label: DJ Business",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "operation": "addLabel",
+        "messageId": "={{ $json.email_id }}",
+        "labelIds": [
+          "Label_BMF"
+        ]
+      },
+      "id": "label-bmf",
+      "name": "Label: BMF Work",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        400
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "operation": "addLabel",
+        "messageId": "={{ $json.email_id }}",
+        "labelIds": [
+          "Label_Pub"
+        ]
+      },
+      "id": "label-pub",
+      "name": "Label: Pub",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        500
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "emails",
+        "columns": "email_id, thread_id, sender, recipient, subject, received_at, business_context, category, priority, sentiment, requires_response, ai_summary, suggested_action, processed_at",
+        "additionalFields": {}
+      },
+      "id": "save-email-db",
+      "name": "Save Email to Database",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ai_classification.requires_response }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-needs-response",
+      "name": "Check if Needs Response",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=AIzaSyBBo5QRTxtMrxIkMrg4_1ULfKHNIZr3zdE",
+        "options": {},
+        "headerParametersJson": "={\n  \"Content-Type\": \"application/json\"\n}",
+        "bodyParametersJson": "={\n  \"generationConfig\": {\"temperature\": 0.7, \"maxOutputTokens\": 2048},\n  \"maxOutputTokens\": 2048,\n  \"contents\": [\n    {\n      \"parts\": [{\"text\": \"Draft a professional email response for this email:\\n\\nOriginal Email:\\nFrom: {{ $json.from }}\\nSubject: {{ $json.subject }}\\nBody: {{ $json.body }}\\n\\nBusiness Context: {{ $json.ai_classification.business_context }}\\nCategory: {{ $json.ai_classification.category }}\\n\\nWrite a professional, friendly response. Sign it from Woody. Return ONLY the email body text, no subject line.\"\n    }\n  ]\n}"
+      },
+      "id": "generate-response",
+      "name": "Generate Draft Response (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1850,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract draft response\nconst response = items[0].json.candidates[0].content.parts[0].text;\nconst emailData = $node[\"Check if Needs Response\"].json;\n\nreturn [{\n  json: {\n    ...emailData,\n    draft_response: response,\n    draft_created_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse-draft",
+      "name": "Parse Draft Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        2050,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "operation": "create",
+        "message": "={{ $json.draft_response }}",
+        "subject": "=Re: {{ $json.subject }}",
+        "toList": "={{ $json.from }}",
+        "options": {
+          "threadId": "={{ $json.thread_id }}"
+        }
+      },
+      "id": "create-gmail-draft",
+      "name": "Create Gmail Draft",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        2250,
+        250
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$credentials.telegramApi.chatId}}",
+        "text": "=\ud83d\udce7 **New Email Requiring Response**\\n\\n**From:** {{ $json.from }}\\n**Subject:** {{ $json.subject }}\\n**Business:** {{ $json.ai_classification.business_context }}\\n**Priority:** {{ $json.ai_classification.priority }}\\n\\n**Summary:** {{ $json.ai_classification.summary }}\\n\\n**Suggested Action:** {{ $json.ai_classification.suggested_action }}\\n\\n\u2705 Draft response created in Gmail",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "notify-telegram",
+      "name": "Notify via Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        2450,
+        250
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$credentials.telegramApi.chatId}}",
+        "text": "=\ud83d\udcec **New Email (No Response Needed)**\\n\\n**From:** {{ $json.from }}\\n**Subject:** {{ $json.subject }}\\n**Business:** {{ $json.ai_classification.business_context }}\\n**Category:** {{ $json.ai_classification.category }}\\n\\n**Summary:** {{ $json.ai_classification.summary }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "notify-info-only",
+      "name": "Notify Info Only",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1850,
+        350
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail Trigger - Check New Emails": {
+      "main": [
+        [
+          {
+            "node": "Parse Email Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Email Data": {
+      "main": [
+        [
+          {
+            "node": "AI Classify Email (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Classify Email (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Classification": {
+      "main": [
+        [
+          {
+            "node": "Route to Woody's",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Route to DJ",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Route to BMF",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Route to Pub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route to Woody's": {
+      "main": [
+        [
+          {
+            "node": "Label: Woody's Creations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route to DJ": {
+      "main": [
+        [
+          {
+            "node": "Label: DJ Business",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route to BMF": {
+      "main": [
+        [
+          {
+            "node": "Label: BMF Work",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route to Pub": {
+      "main": [
+        [
+          {
+            "node": "Label: Pub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label: Woody's Creations": {
+      "main": [
+        [
+          {
+            "node": "Save Email to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label: DJ Business": {
+      "main": [
+        [
+          {
+            "node": "Save Email to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label: BMF Work": {
+      "main": [
+        [
+          {
+            "node": "Save Email to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label: Pub": {
+      "main": [
+        [
+          {
+            "node": "Save Email to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Email to Database": {
+      "main": [
+        [
+          {
+            "node": "Check if Needs Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Needs Response": {
+      "main": [
+        [
+          {
+            "node": "Generate Draft Response (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Info Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Draft Response (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Parse Draft Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Draft Response": {
+      "main": [
+        [
+          {
+            "node": "Create Gmail Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Gmail Draft": {
+      "main": [
+        [
+          {
+            "node": "Notify via Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-11-01T18:00:00.000Z",
+  "versionId": "1"
+}

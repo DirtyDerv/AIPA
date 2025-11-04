@@ -1,0 +1,548 @@
+{
+  "updatedAt": "2025-11-03T13:39:09.604Z",
+  "createdAt": "2025-11-03T13:39:09.604Z",
+  "id": "3Bm3lI9DislsRI8N",
+  "name": "AIPA - Telegram Main Interface",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "webhook-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "=🤖 **AIPA - AI Personal Assistant**\n\nHello {{ $json.message.from.first_name }}!\n\nWhat would you like to do?\n\n📧 /email - Check and manage emails\n📅 /calendar - View and schedule\n🎵 /dj - DJ booking management\n🎁 /woodys - Woody's Creations orders\n💼 /bmf - BMF work logging\n📊 /reports - Business intelligence\n📣 /marketing - Marketing campaigns\n⚙️ /settings - Configure preferences\n❓ /help - Show this menu",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "welcome-message",
+      "name": "Welcome Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        450,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/start"
+            }
+          ]
+        }
+      },
+      "id": "check-start",
+      "name": "Check /start",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/email"
+            }
+          ]
+        }
+      },
+      "id": "check-email",
+      "name": "Check /email",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        450,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/calendar"
+            }
+          ]
+        }
+      },
+      "id": "check-calendar",
+      "name": "Check /calendar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        450,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/dj"
+            }
+          ]
+        }
+      },
+      "id": "check-dj",
+      "name": "Check /dj",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        450,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/woodys"
+            }
+          ]
+        }
+      },
+      "id": "check-woodys",
+      "name": "Check /woodys",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        450,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/bmf"
+            }
+          ]
+        }
+      },
+      "id": "check-bmf",
+      "name": "Check /bmf",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        450,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/reports"
+            }
+          ]
+        }
+      },
+      "id": "check-reports",
+      "name": "Check /reports",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        450,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/marketing"
+            }
+          ]
+        }
+      },
+      "id": "check-marketing",
+      "name": "Check /marketing",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        450,
+        1000
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Log conversation to database\nconst chatId = items[0].json.message.chat.id;\nconst userId = items[0].json.message.from.id;\nconst username = items[0].json.message.from.username || items[0].json.message.from.first_name;\nconst messageText = items[0].json.message.text;\n\nreturn [{\n  json: {\n    chat_id: chatId,\n    user_id: userId,\n    username: username,\n    message: messageText,\n    timestamp: new Date().toISOString(),\n    message_type: 'command'\n  }\n}];"
+      },
+      "id": "log-conversation",
+      "name": "Log Conversation",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "conversations",
+        "columns": "chat_id, user_id, username, message, timestamp, message_type",
+        "additionalFields": {}
+      },
+      "id": "save-to-db",
+      "name": "Save to Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $node[\"Check /email\"].json[\"workflow_id_email\"] }}"
+      },
+      "id": "trigger-email-workflow",
+      "name": "Trigger Email Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        650,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $node[\"Check /calendar\"].json[\"workflow_id_calendar\"] }}"
+      },
+      "id": "trigger-calendar-workflow",
+      "name": "Trigger Calendar Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        650,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $node[\"Check /dj\"].json[\"workflow_id_dj\"] }}"
+      },
+      "id": "trigger-dj-workflow",
+      "name": "Trigger DJ Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        650,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $node[\"Check /woodys\"].json[\"workflow_id_woodys\"] }}"
+      },
+      "id": "trigger-woodys-workflow",
+      "name": "Trigger Woodys Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        650,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $node[\"Check /bmf\"].json[\"workflow_id_bmf\"] }}"
+      },
+      "id": "trigger-bmf-workflow",
+      "name": "Trigger BMF Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        650,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $node[\"Check /reports\"].json[\"workflow_id_reports\"] }}"
+      },
+      "id": "trigger-reports-workflow",
+      "name": "Trigger Reports Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        650,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $node[\"Check /marketing\"].json[\"workflow_id_marketing\"] }}"
+      },
+      "id": "trigger-marketing-workflow",
+      "name": "Trigger Marketing Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        650,
+        1000
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "I didn't understand that command. Type /help to see available commands.",
+        "additionalFields": {}
+      },
+      "id": "unknown-command",
+      "name": "Unknown Command",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        650,
+        1100
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check /start",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Conversation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check /start": {
+      "main": [
+        [
+          {
+            "node": "Welcome Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check /email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check /email": {
+      "main": [
+        [
+          {
+            "node": "Trigger Email Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check /calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check /calendar": {
+      "main": [
+        [
+          {
+            "node": "Trigger Calendar Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check /dj",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check /dj": {
+      "main": [
+        [
+          {
+            "node": "Trigger DJ Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check /woodys",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check /woodys": {
+      "main": [
+        [
+          {
+            "node": "Trigger Woodys Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check /bmf",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check /bmf": {
+      "main": [
+        [
+          {
+            "node": "Trigger BMF Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check /reports",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check /reports": {
+      "main": [
+        [
+          {
+            "node": "Trigger Reports Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check /marketing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check /marketing": {
+      "main": [
+        [
+          {
+            "node": "Trigger Marketing Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unknown Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Conversation": {
+      "main": [
+        [
+          {
+            "node": "Save to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "6e8f6ca8-d648-468b-a1e4-a01e89474f65",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-11-03T13:39:09.611Z",
+      "createdAt": "2025-11-03T13:39:09.611Z",
+      "role": "workflow:owner",
+      "workflowId": "3Bm3lI9DislsRI8N",
+      "projectId": "iAVMD3lR4QXYg8DV"
+    }
+  ],
+  "tags": []
+}

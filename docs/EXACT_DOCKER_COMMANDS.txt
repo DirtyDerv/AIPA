@@ -1,0 +1,112 @@
+====================================================================
+EXACT COMMANDS TO FIX YOUR N8N DOCKER CONTAINER
+====================================================================
+
+Run these commands on the machine at 192.168.0.14
+
+--------------------------------------------------------------------
+STEP 1: Find and stop the current container
+--------------------------------------------------------------------
+
+# Find the container ID
+docker ps -a | grep n8n
+
+# Stop it (replace CONTAINER_ID with the actual ID from above)
+docker stop CONTAINER_ID
+
+# Or if the container name is "n8n":
+docker stop n8n
+
+--------------------------------------------------------------------
+STEP 2: Remove the old container
+--------------------------------------------------------------------
+
+docker rm CONTAINER_ID
+
+# Or:
+docker rm n8n
+
+--------------------------------------------------------------------
+STEP 3: Start new container WITH the WEBHOOK_URL
+--------------------------------------------------------------------
+
+docker run \
+  --hostname=5cbd5e6e12a6 \
+  --user=node \
+  --env=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+  --env=NODE_VERSION=22.18.0 \
+  --env=YARN_VERSION=1.22.22 \
+  --env=NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu \
+  --env=NODE_ENV=production \
+  --env=N8N_RELEASE_TYPE=stable \
+  --env=SHELL=/bin/sh \
+  --env=WEBHOOK_URL=https://uniterative-futile-charmain.ngrok-free.dev \
+  --network=bridge \
+  --workdir=/home/node \
+  -p 5678:5678 \
+  --restart=always \
+  --name=n8n \
+  --label='org.opencontainers.image.description=Workflow Automation Tool' \
+  --label='org.opencontainers.image.source=https://github.com/n8n-io/n8n' \
+  --label='org.opencontainers.image.title=n8n' \
+  --label='org.opencontainers.image.url=https://n8n.io' \
+  --label='org.opencontainers.image.version=1.117.3' \
+  --runtime=runc \
+  -d \
+  n8nio/n8n:latest
+
+--------------------------------------------------------------------
+STEP 4: Verify it's running
+--------------------------------------------------------------------
+
+docker ps | grep n8n
+
+# Should show the container running
+
+# Check the logs
+docker logs n8n
+
+# Should show n8n starting up
+
+--------------------------------------------------------------------
+IMPORTANT NOTES:
+--------------------------------------------------------------------
+
+1. I added: --env=WEBHOOK_URL=https://uniterative-futile-charmain.ngrok-free.dev
+   This is the key change that fixes the Telegram HTTPS error!
+
+2. I changed: --restart=no to --restart=always
+   This means n8n will auto-restart if the server reboots
+
+3. I added: --name=n8n
+   This makes it easier to manage
+
+4. ⚠️ DATA WARNING: Your original command doesn't show a volume mount!
+   This means your workflows might be stored INSIDE the container.
+
+   If you want to preserve data permanently, add this line after --workdir:
+   -v /path/to/n8n/data:/home/node/.n8n \
+
+   (Replace /path/to/n8n/data with where you want to store data)
+
+--------------------------------------------------------------------
+QUICK COPY-PASTE VERSION (all in one):
+--------------------------------------------------------------------
+
+docker stop $(docker ps -q --filter ancestor=n8nio/n8n) && \
+docker rm $(docker ps -aq --filter ancestor=n8nio/n8n) && \
+docker run --hostname=5cbd5e6e12a6 --user=node --env=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin --env=NODE_VERSION=22.18.0 --env=YARN_VERSION=1.22.22 --env=NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu --env=NODE_ENV=production --env=N8N_RELEASE_TYPE=stable --env=SHELL=/bin/sh --env=WEBHOOK_URL=https://uniterative-futile-charmain.ngrok-free.dev --network=bridge --workdir=/home/node -p 5678:5678 --restart=always --name=n8n --label='org.opencontainers.image.description=Workflow Automation Tool' --label='org.opencontainers.image.source=https://github.com/n8n-io/n8n' --label='org.opencontainers.image.title=n8n' --label='org.opencontainers.image.url=https://n8n.io' --label='org.opencontainers.image.version=1.117.3' --runtime=runc -d n8nio/n8n:latest
+
+--------------------------------------------------------------------
+AFTER RUNNING THE COMMAND:
+--------------------------------------------------------------------
+
+1. Wait 5 seconds for n8n to start
+2. Open: http://192.168.0.14:5678
+3. Go to: Workflows → "AIPA - Telegram Main Interface"
+4. Click: "Telegram Trigger" node
+5. CHECK: Webhook URL should show HTTPS (not HTTP)
+6. ACTIVATE: Toggle switch at the top
+7. TEST: Send /start to your Telegram bot
+
+====================================================================

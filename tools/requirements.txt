@@ -1,0 +1,4 @@
+# Finish Day Agent - Standalone Requirements
+# Minimal dependencies for universal use
+
+anthropic>=0.8.0

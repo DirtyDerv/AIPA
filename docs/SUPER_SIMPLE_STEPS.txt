@@ -1,0 +1,81 @@
+====================================================================
+SUPER SIMPLE STEPS - Just Follow These Exactly
+====================================================================
+
+STEP 1: Copy the script file
+--------------------------------------------------------------------
+1. On YOUR PC, find this file:
+   C:\Users\woody\Documents\AI\AIPA\restart_n8n_windows.ps1
+
+2. Copy it (Ctrl+C)
+
+
+STEP 2: Remote into the other Windows machine
+--------------------------------------------------------------------
+1. Press Win + R
+2. Type: mstsc
+3. Enter Computer: 192.168.0.14
+4. Click Connect
+5. Enter your username/password
+
+
+STEP 3: Paste the script file on that machine
+--------------------------------------------------------------------
+1. On the 192.168.0.14 machine, open File Explorer
+2. Go to Desktop or Downloads folder
+3. Paste the file (Ctrl+V)
+   File name: restart_n8n_windows.ps1
+
+
+STEP 4: Run the script
+--------------------------------------------------------------------
+1. Right-click on restart_n8n_windows.ps1
+2. Choose "Run with PowerShell"
+
+   (If it says "execution policy", do this instead:)
+   - Right-click on the file
+   - Choose "Open with" > "PowerShell"
+   - Or: Open PowerShell and type:
+     powershell -ExecutionPolicy Bypass .\restart_n8n_windows.ps1
+
+
+STEP 5: Wait and watch
+--------------------------------------------------------------------
+The script will:
+- Stop the old container
+- Remove it
+- Start a new one with HTTPS support
+- Show you if it worked
+
+
+STEP 6: Test it!
+--------------------------------------------------------------------
+1. Open browser on ANY computer
+2. Go to: http://192.168.0.14:5678
+3. Click: Workflows > "AIPA - Telegram Main Interface"
+4. Click: The "Telegram Trigger" node
+5. CHECK: Webhook URL should show "https://" (not "http://")
+6. Click: Toggle switch to activate
+7. Send: /start to your Telegram bot
+
+====================================================================
+
+ALTERNATIVE IF SCRIPT DOESN'T WORK:
+--------------------------------------------------------------------
+Use Docker Desktop (if installed on 192.168.0.14):
+
+1. Open Docker Desktop on the 192.168.0.14 machine
+2. Find the "n8n" container
+3. Click the stop button (square icon)
+4. Click the trash icon to delete it
+5. Click "Images" in the left sidebar
+6. Find "n8nio/n8n"
+7. Click the run button (play icon)
+8. Click "Optional settings"
+9. Add environment variable:
+   Name: WEBHOOK_URL
+   Value: https://uniterative-futile-charmain.ngrok-free.dev
+10. Set port: 5678:5678
+11. Click "Run"
+
+====================================================================

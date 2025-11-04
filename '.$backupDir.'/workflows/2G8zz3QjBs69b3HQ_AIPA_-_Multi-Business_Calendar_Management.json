@@ -1,0 +1,638 @@
+{
+  "updatedAt": "2025-11-03T13:39:11.690Z",
+  "createdAt": "2025-11-03T13:39:11.690Z",
+  "id": "2G8zz3QjBs69b3HQ",
+  "name": "AIPA - Multi-Business Calendar Management",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/calendar"
+            }
+          ]
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Calendar Command Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "📅 **Multi-Business Calendar**\\n\\nWhat would you like to do?\\n\\n1️⃣ Today's schedule\\n2️⃣ This week's events\\n3️⃣ Add new event\\n4️⃣ Check conflicts\\n5️⃣ View by business\\n6️⃣ Upcoming deadlines\\n\\nReply with a number.",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "reply_markup": {
+            "keyboard": [
+              [
+                "1 - Today",
+                "2 - This Week"
+              ],
+              [
+                "3 - Add Event",
+                "4 - Conflicts"
+              ],
+              [
+                "5 - By Business",
+                "6 - Deadlines"
+              ]
+            ],
+            "one_time_keyboard": true,
+            "resize_keyboard": true
+          }
+        }
+      },
+      "id": "show-calendar-menu",
+      "name": "Show Calendar Menu",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM calendar_events WHERE DATE(event_date) = CURRENT_DATE ORDER BY event_time ASC",
+        "additionalFields": {}
+      },
+      "id": "get-today-events",
+      "name": "Get Today's Events",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        650,
+        200
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format today's schedule\nconst events = items;\n\nif (events.length === 0) {\n  return [{\n    json: {\n      message: \"📭 No events scheduled for today\"\n    }\n  }];\n}\n\nlet message = \"📅 **Today's Schedule**\\n\";\nmessage += new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });\nmessage += \"\\n\\n\";\n\nfor (const event of events) {\n  const time = event.json.event_time ? event.json.event_time.substring(0, 5) : 'All day';\n  const business = event.json.business_context || 'Personal';\n  const businessEmoji = {\n    'woodys_creations': '🎁',\n    'dj_business': '🎵',\n    'bmf_work': '💼',\n    'pub': '🍺',\n    'personal': '👤'\n  }[business] || '📌';\n  \n  message += `${businessEmoji} **${time}** - ${business.replace('_', ' ').toUpperCase()}\\n`;\n  message += `   ${event.json.title}\\n`;\n  if (event.json.location) {\n    message += `   📍 ${event.json.location}\\n`;\n  }\n  if (event.json.notes) {\n    message += `   📝 ${event.json.notes}\\n`;\n  }\n  message += `\\n`;\n}\n\nreturn [{\n  json: {\n    message: message,\n    event_count: events.length\n  }\n}];"
+      },
+      "id": "format-today-schedule",
+      "name": "Format Today's Schedule",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Calendar Command Trigger\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-today-schedule",
+      "name": "Send Today's Schedule",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM calendar_events WHERE event_date BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY) ORDER BY event_date, event_time ASC",
+        "additionalFields": {}
+      },
+      "id": "get-week-events",
+      "name": "Get This Week's Events",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format week's events\nconst events = items;\n\nif (events.length === 0) {\n  return [{\n    json: {\n      message: \"📭 No events scheduled this week\"\n    }\n  }];\n}\n\nlet message = \"📅 **This Week's Events**\\n\\n\";\n\n// Group by date\nconst eventsByDate = {};\n\nfor (const event of events) {\n  const date = event.json.event_date;\n  if (!eventsByDate[date]) {\n    eventsByDate[date] = [];\n  }\n  eventsByDate[date].push(event.json);\n}\n\n// Sort and format\nconst dates = Object.keys(eventsByDate).sort();\n\nfor (const date of dates) {\n  const dateObj = new Date(date);\n  const dateStr = dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });\n  const isToday = date === new Date().toISOString().split('T')[0];\n  \n  message += isToday ? `**${dateStr} (TODAY)**\\n` : `**${dateStr}**\\n`;\n  \n  for (const event of eventsByDate[date]) {\n    const time = event.event_time ? event.event_time.substring(0, 5) : 'All day';\n    const business = event.business_context || 'Personal';\n    const businessEmoji = {\n      'woodys_creations': '🎁',\n      'dj_business': '🎵',\n      'bmf_work': '💼',\n      'pub': '🍺',\n      'personal': '👤'\n    }[business] || '📌';\n    \n    message += `  ${time} ${businessEmoji} ${event.title}\\n`;\n  }\n  message += `\\n`;\n}\n\nmessage += `**Total: ${events.length} events**`;\n\nreturn [{\n  json: {\n    message: message,\n    event_count: events.length\n  }\n}];"
+      },
+      "id": "format-week-events",
+      "name": "Format Week's Events",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Calendar Command Trigger\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-week-events",
+      "name": "Send Week's Events",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Calendar Command Trigger\"].json.message.chat.id }}",
+        "text": "📝 **Add New Calendar Event**\\n\\nPlease provide:\\n\\n1. Title\\n2. Date (YYYY-MM-DD)\\n3. Time (HH:MM) or 'all-day'\\n4. Business (woodys/dj/bmf/pub/personal)\\n5. Location (optional)\\n6. Notes (optional)\\n\\nExample:\\nClient meeting\\n2025-12-15\\n14:00\\nwoodys\\nTheir office\\nDiscuss new product line",
+        "additionalFields": {}
+      },
+      "id": "ask-event-details",
+      "name": "Ask for Event Details",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        650,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "wait-for-event-details",
+      "name": "Wait for Event Details",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        850,
+        400
+      ],
+      "webhookId": "calendar-add-event"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse event details\nconst input = items[0].json.message.text;\nconst lines = input.split('\\n').map(l => l.trim()).filter(l => l);\n\nif (lines.length < 4) {\n  return [{\n    json: {\n      error: true,\n      message: \"❌ Missing required information (need at least title, date, time, business)\"\n    }\n  }];\n}\n\nconst title = lines[0];\nconst eventDate = lines[1];\nconst eventTime = lines[2].toLowerCase() === 'all-day' ? null : lines[2];\nconst business = lines[3].toLowerCase().replace(/\\s+/g, '_');\nconst location = lines[4] || null;\nconst notes = lines[5] || null;\n\nreturn [{\n  json: {\n    error: false,\n    title: title,\n    event_date: eventDate,\n    event_time: eventTime,\n    business_context: business,\n    location: location,\n    notes: notes,\n    created_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse-event-details",
+      "name": "Parse Event Details",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ \"SELECT * FROM calendar_events WHERE event_date = '\" + $json.event_date + \"' AND event_time IS NOT NULL AND ABS(TIMESTAMPDIFF(MINUTE, event_time, '\" + ($json.event_time || '00:00') + \"')) < 60\" }}",
+        "additionalFields": {}
+      },
+      "id": "check-conflicts",
+      "name": "Check for Conflicts",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        400
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.length }}",
+              "operation": "equal",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "check-if-clear",
+      "name": "Check if Time Clear",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "calendar_events",
+        "columns": "title, event_date, event_time, business_context, location, notes, created_at",
+        "additionalFields": {}
+      },
+      "id": "save-event",
+      "name": "Save Event to Calendar",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1650,
+        350
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "create",
+        "calendar": "primary",
+        "start": "={{ $node[\"Parse Event Details\"].json.event_date }}T{{ $node[\"Parse Event Details\"].json.event_time || '00:00' }}:00",
+        "end": "={{ $node[\"Parse Event Details\"].json.event_date }}T{{ $node[\"Parse Event Details\"].json.event_time || '23:59' }}:00",
+        "summary": "={{ $node[\"Parse Event Details\"].json.title }}",
+        "options": {
+          "description": "={{ $node[\"Parse Event Details\"].json.notes }}",
+          "location": "={{ $node[\"Parse Event Details\"].json.location }}"
+        }
+      },
+      "id": "add-to-google-calendar",
+      "name": "Add to Google Calendar",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [
+        1850,
+        350
+      ],
+      "credentials": {
+        "googleCalendarOAuth2": {
+          "id": "1",
+          "name": "Google Calendar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Wait for Event Details\"].json.message.chat.id }}",
+        "text": "=✅ **Event Added Successfully!**\\n\\n📅 {{ $node[\"Parse Event Details\"].json.event_date }}\\n⏰ {{ $node[\"Parse Event Details\"].json.event_time || 'All day' }}\\n📌 {{ $node[\"Parse Event Details\"].json.title }}\\n🏢 {{ $node[\"Parse Event Details\"].json.business_context }}\\n\\n✓ Saved to database\\n✓ Added to Google Calendar",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "confirm-event-added",
+      "name": "Confirm Event Added",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        2050,
+        350
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Wait for Event Details\"].json.message.chat.id }}",
+        "text": "=⚠️ **Time Conflict Detected!**\\n\\nThere's already an event scheduled around this time:\\n\\n{{ $node[\"Check for Conflicts\"].json[0].title }}\\n⏰ {{ $node[\"Check for Conflicts\"].json[0].event_time }}\\n\\nWould you like to:\\n1. Add anyway\\n2. Choose different time\\n3. Cancel",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "warn-conflict",
+      "name": "Warn About Conflict",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1650,
+        450
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM calendar_events WHERE event_date >= CURRENT_DATE AND business_context IN ('dj_business', 'woodys_creations', 'bmf_work') ORDER BY event_date ASC LIMIT 20",
+        "additionalFields": {}
+      },
+      "id": "get-upcoming-deadlines",
+      "name": "Get Upcoming Deadlines",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        650,
+        500
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format upcoming deadlines\nconst events = items;\n\nif (events.length === 0) {\n  return [{\n    json: {\n      message: \"📭 No upcoming deadlines\"\n    }\n  }];\n}\n\nlet message = \"⏰ **Upcoming Deadlines**\\n\\n\";\n\nfor (const event of events) {\n  const date = new Date(event.json.event_date);\n  const today = new Date();\n  today.setHours(0, 0, 0, 0);\n  const daysUntil = Math.ceil((date - today) / (1000 * 60 * 60 * 24));\n  \n  const dateStr = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });\n  const business = event.json.business_context || 'Unknown';\n  const businessEmoji = {\n    'woodys_creations': '🎁',\n    'dj_business': '🎵',\n    'bmf_work': '💼',\n    'pub': '🍺'\n  }[business] || '📌';\n  \n  // Urgency indicator\n  const urgency = daysUntil <= 1 ? '🔴' : daysUntil <= 3 ? '🟡' : '🟢';\n  \n  message += `${urgency} ${businessEmoji} **${event.json.title}**\\n`;\n  message += `   📅 ${dateStr} (${daysUntil} days)\\n`;\n  if (event.json.notes) {\n    message += `   📝 ${event.json.notes}\\n`;\n  }\n  message += `\\n`;\n}\n\nreturn [{\n  json: {\n    message: message,\n    deadline_count: events.length\n  }\n}];"
+      },
+      "id": "format-deadlines",
+      "name": "Format Deadlines",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Calendar Command Trigger\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-deadlines",
+      "name": "Send Deadlines",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        500
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Calendar Command Trigger": {
+      "main": [
+        [
+          {
+            "node": "Show Calendar Menu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Show Calendar Menu": {
+      "main": [
+        [
+          {
+            "node": "Get Today's Events",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get This Week's Events",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ask for Event Details",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Upcoming Deadlines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Today's Events": {
+      "main": [
+        [
+          {
+            "node": "Format Today's Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Today's Schedule": {
+      "main": [
+        [
+          {
+            "node": "Send Today's Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get This Week's Events": {
+      "main": [
+        [
+          {
+            "node": "Format Week's Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Week's Events": {
+      "main": [
+        [
+          {
+            "node": "Send Week's Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask for Event Details": {
+      "main": [
+        [
+          {
+            "node": "Wait for Event Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Event Details": {
+      "main": [
+        [
+          {
+            "node": "Parse Event Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Event Details": {
+      "main": [
+        [
+          {
+            "node": "Check for Conflicts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Conflicts": {
+      "main": [
+        [
+          {
+            "node": "Check if Time Clear",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Time Clear": {
+      "main": [
+        [
+          {
+            "node": "Save Event to Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Warn About Conflict",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Event to Calendar": {
+      "main": [
+        [
+          {
+            "node": "Add to Google Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Google Calendar": {
+      "main": [
+        [
+          {
+            "node": "Confirm Event Added",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Upcoming Deadlines": {
+      "main": [
+        [
+          {
+            "node": "Format Deadlines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Deadlines": {
+      "main": [
+        [
+          {
+            "node": "Send Deadlines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "647c0b72-28b9-47b5-bade-0f1d867f44b8",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-11-03T13:39:11.692Z",
+      "createdAt": "2025-11-03T13:39:11.692Z",
+      "role": "workflow:owner",
+      "workflowId": "2G8zz3QjBs69b3HQ",
+      "projectId": "iAVMD3lR4QXYg8DV"
+    }
+  ],
+  "tags": []
+}

@@ -1,0 +1,34 @@
+{
+  "migration_type": "openai_to_gemini",
+  "timestamp": "2025-11-02T19:21:05.066592",
+  "success": true,
+  "new_workflow_id": "YXFT5s6U3HD5qarc",
+  "old_workflow_id": "W0LDLmavDG8MfSMJ",
+  "steps": [
+    {
+      "step": "create_gemini_workflow",
+      "success": true,
+      "details": "Created Gemini workflow: YXFT5s6U3HD5qarc",
+      "timestamp": "2025-11-02T19:21:04.980524+00:00"
+    },
+    {
+      "step": "activate_gemini",
+      "success": true,
+      "details": "Gemini workflow activated",
+      "timestamp": "2025-11-02T19:21:05.023886+00:00"
+    },
+    {
+      "step": "deactivate_old",
+      "success": true,
+      "details": "Old OpenAI workflow deactivated",
+      "timestamp": "2025-11-02T19:21:05.065141+00:00"
+    }
+  ],
+  "gemini_features": [
+    "Text analysis with Gemini 1.5 Flash",
+    "Image analysis with Gemini Vision",
+    "Voice file processing",
+    "Document analysis",
+    "Multimodal AI capabilities"
+  ]
+}

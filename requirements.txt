@@ -1,0 +1,7 @@
+# This file is used to list the Python dependencies for the project.
+# You can install these dependencies by running:
+# pip install -r requirements.txt
+
+discord.py
+requests
+python-dotenv

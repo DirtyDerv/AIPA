@@ -1,0 +1,617 @@
+{
+  "updatedAt": "2025-11-03T13:39:11.394Z",
+  "createdAt": "2025-11-03T13:39:11.394Z",
+  "id": "zieoJR9e2tKTPvDR",
+  "name": "AIPA - DJ Booking Automation",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/dj"
+            }
+          ]
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "DJ Command Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "🎵 **DJ Business Management**\\n\\nWhat would you like to do?\\n\\n1️⃣ Check availability\\n2️⃣ View pending bookings\\n3️⃣ Generate quote\\n4️⃣ View upcoming gigs\\n5️⃣ Send booking confirmation\\n6️⃣ Analytics\\n\\nReply with a number or describe what you need.",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "reply_markup": {
+            "keyboard": [
+              [
+                "1 - Check Availability",
+                "2 - Pending Bookings"
+              ],
+              [
+                "3 - Generate Quote",
+                "4 - Upcoming Gigs"
+              ],
+              [
+                "5 - Send Confirmation",
+                "6 - Analytics"
+              ]
+            ],
+            "one_time_keyboard": true,
+            "resize_keyboard": true
+          }
+        }
+      },
+      "id": "show-dj-menu",
+      "name": "Show DJ Menu",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM dj_bookings WHERE status = 'pending' OR status = 'confirmed' ORDER BY event_date ASC",
+        "additionalFields": {}
+      },
+      "id": "get-bookings",
+      "name": "Get Pending Bookings",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        650,
+        200
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format bookings for display\nconst bookings = items;\n\nif (bookings.length === 0) {\n  return [{\n    json: {\n      message: \"📭 No pending or confirmed bookings\"\n    }\n  }];\n}\n\nlet message = \"🎵 **DJ Bookings**\\n\\n\";\n\nfor (const booking of bookings) {\n  const date = new Date(booking.json.event_date).toLocaleDateString();\n  const status = booking.json.status.toUpperCase();\n  const venue = booking.json.venue_name || 'TBD';\n  const price = booking.json.quoted_price ? `£${booking.json.quoted_price}` : 'Not quoted';\n  \n  message += `📅 **${date}** - ${status}\\n`;\n  message += `📍 ${venue}\\n`;\n  message += `💰 ${price}\\n`;\n  message += `👤 ${booking.json.client_name}\\n`;\n  message += `📞 ${booking.json.client_phone || 'No phone'}\\n`;\n  message += `\\n`;\n}\n\nreturn [{\n  json: {\n    message: message,\n    bookings: bookings\n  }\n}];"
+      },
+      "id": "format-bookings",
+      "name": "Format Bookings Display",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"DJ Command Trigger\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-bookings",
+      "name": "Send Bookings List",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"DJ Command Trigger\"].json.message.chat.id }}",
+        "text": "📅 **Check Availability**\\n\\nPlease provide the date you want to check:\\n\\nFormat: YYYY-MM-DD (e.g., 2025-12-25)",
+        "additionalFields": {}
+      },
+      "id": "ask-date",
+      "name": "Ask for Date",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "wait-for-date",
+      "name": "Wait for Date Input",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "webhookId": "dj-date-input"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT * FROM dj_bookings WHERE event_date = '{{ $json.message.text }}' AND (status = 'confirmed' OR status = 'pending')",
+        "additionalFields": {}
+      },
+      "id": "check-availability",
+      "name": "Check Date Availability",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Check if date is available\nconst bookings = items;\nconst requestedDate = $node[\"Wait for Date Input\"].json.message.text;\n\nif (bookings.length === 0) {\n  return [{\n    json: {\n      available: true,\n      date: requestedDate,\n      message: `✅ **AVAILABLE**\\n\\n📅 ${requestedDate} is free!\\n\\nWould you like to:\\n1. Create a quote\\n2. Block the date\\n3. Go back to menu`\n    }\n  }];\n} else {\n  const booking = bookings[0].json;\n  return [{\n    json: {\n      available: false,\n      date: requestedDate,\n      message: `❌ **NOT AVAILABLE**\\n\\n📅 ${requestedDate} is already booked\\n\\n📍 ${booking.venue_name || 'Venue TBD'}\\n👤 ${booking.client_name}\\n📊 Status: ${booking.status}`\n    }\n  }];\n}"
+      },
+      "id": "format-availability",
+      "name": "Format Availability Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Wait for Date Input\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-availability",
+      "name": "Send Availability Status",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"DJ Command Trigger\"].json.message.chat.id }}",
+        "text": "💰 **Generate DJ Quote**\\n\\nI'll help you create a professional quote. Please provide:\\n\\n1. Client name\\n2. Event date (YYYY-MM-DD)\\n3. Event type (wedding/birthday/corporate/private)\\n4. Duration (hours)\\n5. Venue name\\n6. Special requests\\n\\nExample:\\nJohn Smith\\n2025-12-25\\nwedding\\n5\\nThe Grand Hotel\\nNeed lighting + smoke machine",
+        "additionalFields": {}
+      },
+      "id": "ask-quote-details",
+      "name": "Ask Quote Details",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        650,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "wait-for-quote-details",
+      "name": "Wait for Quote Details",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        850,
+        400
+      ],
+      "webhookId": "dj-quote-input"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse quote details\nconst input = items[0].json.message.text;\nconst lines = input.split('\\n').map(l => l.trim()).filter(l => l);\n\nif (lines.length < 5) {\n  return [{\n    json: {\n      error: true,\n      message: \"❌ Missing information. Please provide all 6 items.\"\n    }\n  }];\n}\n\n// Base pricing\nconst basePrices = {\n  wedding: 600,\n  birthday: 400,\n  corporate: 750,\n  private: 350\n};\n\nconst clientName = lines[0];\nconst eventDate = lines[1];\nconst eventType = lines[2].toLowerCase();\nconst duration = parseInt(lines[3]);\nconst venueName = lines[4];\nconst specialRequests = lines[5] || 'None';\n\n// Calculate price\nlet basePrice = basePrices[eventType] || 400;\nlet additionalHours = Math.max(0, duration - 4);\nlet totalPrice = basePrice + (additionalHours * 75);\n\n// Add-ons\nif (specialRequests.toLowerCase().includes('lighting')) {\n  totalPrice += 150;\n}\nif (specialRequests.toLowerCase().includes('smoke')) {\n  totalPrice += 50;\n}\nif (specialRequests.toLowerCase().includes('photo')) {\n  totalPrice += 200;\n}\n\nreturn [{\n  json: {\n    error: false,\n    client_name: clientName,\n    event_date: eventDate,\n    event_type: eventType,\n    duration: duration,\n    venue_name: venueName,\n    special_requests: specialRequests,\n    base_price: basePrice,\n    total_price: totalPrice,\n    breakdown: {\n      base: basePrice,\n      extra_hours: additionalHours * 75,\n      addons: totalPrice - basePrice - (additionalHours * 75)\n    }\n  }\n}];"
+      },
+      "id": "calculate-quote",
+      "name": "Calculate Quote",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=AIzaSyBBo5QRTxtMrxIkMrg4_1ULfKHNIZr3zdE",
+        "options": {},
+        "headerParametersJson": "={\n  \"Content-Type\": \"application/json\"\n}",
+        "bodyParametersJson": "={\n  \"generationConfig\": {\"temperature\": 0.7, \"maxOutputTokens\": 2048},\n  \"maxOutputTokens\": 1500,\n  \"contents\": [\n    {\n      \"parts\": [{\"text\": \"Create a professional DJ service quote email.\\n\\nDetails:\\nClient: {{ $json.client_name }}\\nEvent Date: {{ $json.event_date }}\\nEvent Type: {{ $json.event_type }}\\nDuration: {{ $json.duration }} hours\\nVenue: {{ $json.venue_name }}\\nSpecial Requests: {{ $json.special_requests }}\\n\\nPricing:\\nBase Price: £{{ $json.base_price }}\\nExtra Hours: £{{ $json.breakdown.extra_hours }}\\nAdd-ons: £{{ $json.breakdown.addons }}\\n**Total: £{{ $json.total_price }}**\\n\\nWrite a friendly, professional quote email from Woody (DJ name: DJ Woody). Include:\\n- Warm greeting\\n- Event details summary\\n- Clear pricing breakdown\\n- What's included (sound system, lighting if requested, MC services)\\n- Payment terms (50% deposit, 50% on day)\\n- Availability to discuss\\n- Professional closing\\n\\nReturn only the email body text.\"\n    }\n  ]\n}"
+      },
+      "id": "generate-quote-email",
+      "name": "Generate Quote Email (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1250,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract quote email\nconst emailBody = items[0].json.candidates[0].content.parts[0].text;\nconst quoteData = $node[\"Calculate Quote\"].json;\n\nreturn [{\n  json: {\n    ...quoteData,\n    quote_email: emailBody,\n    created_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format-quote",
+      "name": "Format Quote",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "dj_bookings",
+        "columns": "client_name, event_date, event_type, duration_hours, venue_name, special_requests, quoted_price, status, quote_sent_at",
+        "additionalFields": {}
+      },
+      "id": "save-quote-db",
+      "name": "Save Quote to Database",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1650,
+        400
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Wait for Quote Details\"].json.message.chat.id }}",
+        "text": "=💰 **Quote Generated**\\n\\n**Client:** {{ $json.client_name }}\\n**Event:** {{ $json.event_type }}\\n**Date:** {{ $json.event_date }}\\n**Venue:** {{ $json.venue_name }}\\n**Duration:** {{ $json.duration }} hours\\n\\n**Price Breakdown:**\\nBase Price: £{{ $json.base_price }}\\nExtra Hours: £{{ $json.breakdown.extra_hours }}\\nAdd-ons: £{{ $json.breakdown.addons }}\\n**Total: £{{ $json.total_price }}**\\n\\n✅ Quote saved to database\\n\\nWould you like to:\\n1. Send quote via email\\n2. Copy quote text\\n3. Edit and resend",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-quote-confirmation",
+      "name": "Send Quote Confirmation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1850,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM dj_bookings WHERE event_date >= CURRENT_DATE AND status IN ('confirmed', 'pending') ORDER BY event_date ASC LIMIT 10",
+        "additionalFields": {}
+      },
+      "id": "get-upcoming-gigs",
+      "name": "Get Upcoming Gigs",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        650,
+        500
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format upcoming gigs\nconst gigs = items;\n\nif (gigs.length === 0) {\n  return [{\n    json: {\n      message: \"📭 No upcoming gigs scheduled\"\n    }\n  }];\n}\n\nlet message = \"🎵 **Upcoming DJ Gigs**\\n\\n\";\nlet totalRevenue = 0;\n\nfor (const gig of gigs) {\n  const date = new Date(gig.json.event_date);\n  const daysUntil = Math.ceil((date - new Date()) / (1000 * 60 * 60 * 24));\n  const dateStr = date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });\n  \n  message += `📅 **${dateStr}** (${daysUntil} days)\\n`;\n  message += `${gig.json.event_type.toUpperCase()} - ${gig.json.status.toUpperCase()}\\n`;\n  message += `📍 ${gig.json.venue_name}\\n`;\n  message += `👤 ${gig.json.client_name}\\n`;\n  message += `💰 £${gig.json.quoted_price}\\n`;\n  message += `⏱️ ${gig.json.duration_hours} hours\\n`;\n  message += `\\n`;\n  \n  if (gig.json.status === 'confirmed') {\n    totalRevenue += gig.json.quoted_price;\n  }\n}\n\nmessage += `\\n💵 **Total Confirmed Revenue:** £${totalRevenue}`;\n\nreturn [{\n  json: {\n    message: message,\n    total_gigs: gigs.length,\n    total_revenue: totalRevenue\n  }\n}];"
+      },
+      "id": "format-upcoming-gigs",
+      "name": "Format Upcoming Gigs",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        850,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"DJ Command Trigger\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-upcoming-gigs",
+      "name": "Send Upcoming Gigs",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        500
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "DJ Command Trigger": {
+      "main": [
+        [
+          {
+            "node": "Show DJ Menu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Show DJ Menu": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Bookings",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ask for Date",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ask Quote Details",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Upcoming Gigs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Bookings": {
+      "main": [
+        [
+          {
+            "node": "Format Bookings Display",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Bookings Display": {
+      "main": [
+        [
+          {
+            "node": "Send Bookings List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask for Date": {
+      "main": [
+        [
+          {
+            "node": "Wait for Date Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Date Input": {
+      "main": [
+        [
+          {
+            "node": "Check Date Availability",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Date Availability": {
+      "main": [
+        [
+          {
+            "node": "Format Availability Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Availability Response": {
+      "main": [
+        [
+          {
+            "node": "Send Availability Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask Quote Details": {
+      "main": [
+        [
+          {
+            "node": "Wait for Quote Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Quote Details": {
+      "main": [
+        [
+          {
+            "node": "Calculate Quote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Quote": {
+      "main": [
+        [
+          {
+            "node": "Generate Quote Email (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Quote Email (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Format Quote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Quote": {
+      "main": [
+        [
+          {
+            "node": "Save Quote to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Quote to Database": {
+      "main": [
+        [
+          {
+            "node": "Send Quote Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Upcoming Gigs": {
+      "main": [
+        [
+          {
+            "node": "Format Upcoming Gigs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Upcoming Gigs": {
+      "main": [
+        [
+          {
+            "node": "Send Upcoming Gigs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "75bdfeed-04c3-4181-a268-71b6cb22f445",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-11-03T13:39:11.398Z",
+      "createdAt": "2025-11-03T13:39:11.398Z",
+      "role": "workflow:owner",
+      "workflowId": "zieoJR9e2tKTPvDR",
+      "projectId": "iAVMD3lR4QXYg8DV"
+    }
+  ],
+  "tags": []
+}

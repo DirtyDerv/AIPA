@@ -1,0 +1,713 @@
+{
+  "updatedAt": "2025-11-03T13:39:11.897Z",
+  "createdAt": "2025-11-03T13:39:11.897Z",
+  "id": "jwbbmWibkCAQJUwP",
+  "name": "AIPA - Marketing Campaign Automation",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/marketing"
+            }
+          ]
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Marketing Command Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "📣 **Marketing Automation**\\n\\nWhat would you like to do?\\n\\n1️⃣ Create email campaign\\n2️⃣ DJ promotion ideas\\n3️⃣ Woody's product showcase\\n4️⃣ Social media post\\n5️⃣ Follow-up sequence\\n6️⃣ Customer outreach\\n7️⃣ Campaign analytics\\n\\nReply with a number.",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "reply_markup": {
+            "keyboard": [
+              [
+                "1 - Email Campaign",
+                "2 - DJ Promo"
+              ],
+              [
+                "3 - Product Showcase",
+                "4 - Social Post"
+              ],
+              [
+                "5 - Follow-up",
+                "6 - Outreach"
+              ],
+              [
+                "7 - Analytics"
+              ]
+            ],
+            "one_time_keyboard": true,
+            "resize_keyboard": true
+          }
+        }
+      },
+      "id": "show-marketing-menu",
+      "name": "Show Marketing Menu",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Marketing Command Trigger\"].json.message.chat.id }}",
+        "text": "📧 **Create Email Campaign**\\n\\nPlease provide:\\n\\n1. Business (woodys/dj/pub)\\n2. Campaign goal (promotion/announcement/follow-up)\\n3. Target audience description\\n4. Special offer or message\\n5. Call-to-action\\n\\nExample:\\nwoodys\\npromotion\\nPrevious customers who bought signs\\n20% off Christmas decorations\\nShop now at woodyscreations.co.uk",
+        "additionalFields": {}
+      },
+      "id": "ask-campaign-details",
+      "name": "Ask Campaign Details",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        650,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "wait-for-campaign-details",
+      "name": "Wait for Campaign Details",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        850,
+        200
+      ],
+      "webhookId": "marketing-campaign"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Parse campaign details\nconst input = items[0].json.message.text;\nconst lines = input.split('\\n').map(l => l.trim()).filter(l => l);\n\nif (lines.length < 5) {\n  return [{\n    json: {\n      error: true,\n      message: \"❌ Missing information. Please provide all 5 items.\"\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    error: false,\n    business: lines[0],\n    campaign_goal: lines[1],\n    target_audience: lines[2],\n    offer_message: lines[3],\n    call_to_action: lines[4],\n    created_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse-campaign-details",
+      "name": "Parse Campaign Details",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=AIzaSyBBo5QRTxtMrxIkMrg4_1ULfKHNIZr3zdE",
+        "options": {},
+        "headerParametersJson": "={\n  \"Content-Type\": \"application/json\"\n}",
+        "bodyParametersJson": "={\n  \"generationConfig\": {\"temperature\": 0.7, \"maxOutputTokens\": 2048},\n  \"maxOutputTokens\": 2048,\n  \"contents\": [\n    {\n      \"parts\": [{\"text\": \"Create a professional marketing email campaign.\\n\\nBusiness: {{ $json.business }}\\nGoal: {{ $json.campaign_goal }}\\nAudience: {{ $json.target_audience }}\\nOffer: {{ $json.offer_message }}\\nCTA: {{ $json.call_to_action }}\\n\\nCreate:\\n1. Compelling subject line (50 chars max)\\n2. Email body with:\\n   - Engaging opening\\n   - Clear value proposition\\n   - Social proof/testimonials if appropriate\\n   - Strong call-to-action\\n   - Professional closing\\n3. Alt subject line option\\n\\nFormat:\\nSUBJECT: [subject]\\nALT SUBJECT: [alt subject]\\n\\n[email body]\"\n    }\n  ]\n}"
+      },
+      "id": "generate-email-campaign",
+      "name": "Generate Email Campaign (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1250,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Parse email campaign\nconst emailContent = items[0].json.candidates[0].content.parts[0].text;\nconst campaignData = $node[\"Parse Campaign Details\"].json;\n\n// Extract subject line\nconst subjectMatch = emailContent.match(/SUBJECT:\\s*(.+?)\\n/);\nconst altSubjectMatch = emailContent.match(/ALT SUBJECT:\\s*(.+?)\\n/);\nconst subject = subjectMatch ? subjectMatch[1].trim() : 'Your Campaign';\nconst altSubject = altSubjectMatch ? altSubjectMatch[1].trim() : '';\n\n// Extract body (everything after alt subject line)\nconst bodyStart = emailContent.indexOf('ALT SUBJECT:');\nconst bodyContent = bodyStart >= 0 ? emailContent.substring(bodyStart).split('\\n').slice(2).join('\\n').trim() : emailContent;\n\nreturn [{\n  json: {\n    ...campaignData,\n    subject_line: subject,\n    alt_subject_line: altSubject,\n    email_body: bodyContent,\n    generated_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse-campaign",
+      "name": "Parse Campaign Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1450,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "marketing_campaigns",
+        "columns": "business_context, campaign_goal, target_audience, subject_line, email_body, status, created_at",
+        "additionalFields": {}
+      },
+      "id": "save-campaign",
+      "name": "Save Campaign",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1650,
+        200
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Wait for Campaign Details\"].json.message.chat.id }}",
+        "text": "=✅ **Email Campaign Created!**\\n\\n**Subject:** {{ $node[\"Parse Campaign Content\"].json.subject_line }}\\n\\n**Preview:**\\n{{ $node[\"Parse Campaign Content\"].json.email_body.substring(0, 200) }}...\\n\\n**Alt Subject:** {{ $node[\"Parse Campaign Content\"].json.alt_subject_line }}\\n\\n📁 Campaign saved to database\\n\\nWould you like to:\\n1. Send test email\\n2. Schedule send\\n3. Edit and resend\\n4. View full content",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-campaign-preview",
+      "name": "Send Campaign Preview",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1850,
+        200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Marketing Command Trigger\"].json.message.chat.id }}",
+        "text": "🎵 **DJ Promotion Ideas**\\n\\nSelect promotion type:\\n\\n1️⃣ Seasonal promotion (e.g., Christmas parties)\\n2️⃣ Wedding package special\\n3️⃣ Corporate event offer\\n4️⃣ Referral program\\n5️⃣ Last-minute booking discount\\n\\nReply with a number.",
+        "additionalFields": {}
+      },
+      "id": "ask-dj-promo-type",
+      "name": "Ask DJ Promo Type",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "wait-for-promo-type",
+      "name": "Wait for Promo Type",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "webhookId": "dj-promo-type"
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=AIzaSyBBo5QRTxtMrxIkMrg4_1ULfKHNIZr3zdE",
+        "options": {},
+        "headerParametersJson": "={\n  \"Content-Type\": \"application/json\"\n}",
+        "bodyParametersJson": "={\n  \"generationConfig\": {\"temperature\": 0.7, \"maxOutputTokens\": 2048},\n  \"maxOutputTokens\": 1500,\n  \"contents\": [\n    {\n      \"parts\": [{\"text\": \"Create a DJ service promotion based on type: {{ $json.message.text }}\\n\\nGenerate:\\n1. Catchy promotion title\\n2. Compelling description\\n3. Specific discount or offer\\n4. Target audience\\n5. Social media caption (150 chars)\\n6. Email subject line\\n7. Call-to-action\\n\\nMake it exciting and professional for DJ Woody.\"\n    }\n  ]\n}"
+      },
+      "id": "generate-dj-promo",
+      "name": "Generate DJ Promo (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Wait for Promo Type\"].json.message.chat.id }}",
+        "text": "=🎵 **DJ Promotion Created!**\\n\\n{{ $json.content[0].text }}\\n\\n💾 Would you like to save this promotion?",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-dj-promo",
+      "name": "Send DJ Promo",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Marketing Command Trigger\"].json.message.chat.id }}",
+        "text": "📱 **Social Media Post Generator**\\n\\nProvide:\\n\\n1. Business (woodys/dj/pub)\\n2. Post type (product/announcement/tip/behind-scenes)\\n3. Main message or product\\n4. Platform (facebook/instagram/twitter/linkedin)\\n\\nExample:\\nwoodys\\nproduct\\nCustom wedding signs\\ninstagram",
+        "additionalFields": {}
+      },
+      "id": "ask-social-post-details",
+      "name": "Ask Social Post Details",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        650,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "wait-for-social-details",
+      "name": "Wait for Social Details",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        850,
+        400
+      ],
+      "webhookId": "social-post"
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=AIzaSyBBo5QRTxtMrxIkMrg4_1ULfKHNIZr3zdE",
+        "options": {},
+        "headerParametersJson": "={\n  \"Content-Type\": \"application/json\"\n}",
+        "bodyParametersJson": "={\n  \"generationConfig\": {\"temperature\": 0.7, \"maxOutputTokens\": 2048},\n  \"maxOutputTokens\": 1000,\n  \"contents\": [\n    {\n      \"parts\": [{\"text\": \"Create a social media post.\\n\\nInput:\\n{{ $json.message.text }}\\n\\nGenerate:\\n1. Engaging caption with emojis\\n2. Relevant hashtags (10-15)\\n3. Call-to-action\\n4. Best posting time recommendation\\n5. Image description/suggestion\\n\\nOptimize for the specified platform.\"\n    }\n  ]\n}"
+      },
+      "id": "generate-social-post",
+      "name": "Generate Social Post (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1050,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Wait for Social Details\"].json.message.chat.id }}",
+        "text": "=📱 **Social Media Post Ready!**\\n\\n{{ $json.content[0].text }}\\n\\n✅ Copy and paste to your platform!",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-social-post",
+      "name": "Send Social Post",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  c.customer_name,\n  c.customer_email,\n  o.product_type,\n  o.completed_at\nFROM woodys_orders o\nJOIN customers c ON o.customer_email = c.email\nWHERE o.status = 'completed'\n  AND o.completed_at >= DATE_SUB(CURRENT_DATE, INTERVAL 30 DAY)\n  AND c.email NOT IN (\n    SELECT customer_email \n    FROM woodys_orders \n    WHERE order_date > DATE_SUB(CURRENT_DATE, INTERVAL 90 DAY)\n    AND status IN ('pending', 'in_production')\n  )\nLIMIT 50",
+        "additionalFields": {}
+      },
+      "id": "get-follow-up-customers",
+      "name": "Get Follow-up Customers",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        650,
+        500
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Format follow-up list\nconst customers = items.map(i => i.json);\n\nif (customers.length === 0) {\n  return [{\n    json: {\n      message: \"📭 No customers for follow-up at this time\"\n    }\n  }];\n}\n\nlet message = `📧 **Follow-up Campaign Candidates**\\n`;\nmessage += `${customers.length} recent customers\\n\\n`;\n\nfor (const customer of customers.slice(0, 10)) {\n  const completedDate = new Date(customer.completed_at).toLocaleDateString();\n  message += `👤 ${customer.customer_name}\\n`;\n  message += `   📦 ${customer.product_type} (${completedDate})\\n`;\n  message += `   📧 ${customer.customer_email}\\n\\n`;\n}\n\nif (customers.length > 10) {\n  message += `... and ${customers.length - 10} more\\n\\n`;\n}\n\nmessage += `**Suggested Actions:**\\n`;\nmessage += `1. Send satisfaction survey\\n`;\nmessage += `2. Request review/testimonial\\n`;\nmessage += `3. Offer repeat customer discount\\n`;\nmessage += `4. Share new product line\\n\\n`;\nmessage += `Reply with action number to generate campaign.`;\n\nreturn [{\n  json: {\n    message: message,\n    customer_count: customers.length,\n    customers: customers\n  }\n}];"
+      },
+      "id": "format-follow-up-list",
+      "name": "Format Follow-up List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        850,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Marketing Command Trigger\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-follow-up-list",
+      "name": "Send Follow-up List",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        500
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  campaign_goal,\n  COUNT(*) as campaign_count,\n  SUM(emails_sent) as total_sent,\n  SUM(emails_opened) as total_opened,\n  SUM(clicks) as total_clicks,\n  AVG(open_rate) as avg_open_rate,\n  AVG(click_rate) as avg_click_rate\nFROM marketing_campaigns\nWHERE created_at >= DATE_SUB(CURRENT_DATE, INTERVAL 90 DAY)\nGROUP BY campaign_goal",
+        "additionalFields": {}
+      },
+      "id": "get-campaign-analytics",
+      "name": "Get Campaign Analytics",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        650,
+        600
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Format campaign analytics\nconst analytics = items.map(i => i.json);\n\nif (analytics.length === 0) {\n  return [{\n    json: {\n      message: \"📭 No campaign data available yet\"\n    }\n  }];\n}\n\nlet message = `📊 **Marketing Campaign Analytics**\\nLast 90 Days\\n\\n`;\n\nlet totalSent = 0;\nlet totalOpened = 0;\nlet totalClicks = 0;\n\nfor (const data of analytics) {\n  const sent = parseInt(data.total_sent || 0);\n  const opened = parseInt(data.total_opened || 0);\n  const clicks = parseInt(data.total_clicks || 0);\n  const openRate = parseFloat(data.avg_open_rate || 0);\n  const clickRate = parseFloat(data.avg_click_rate || 0);\n  \n  message += `**${data.campaign_goal.toUpperCase()}**\\n`;\n  message += `📧 Sent: ${sent}\\n`;\n  message += `👁️ Opened: ${opened} (${openRate.toFixed(1)}%)\\n`;\n  message += `👆 Clicks: ${clicks} (${clickRate.toFixed(1)}%)\\n\\n`;\n  \n  totalSent += sent;\n  totalOpened += opened;\n  totalClicks += clicks;\n}\n\nconst overallOpenRate = totalSent > 0 ? (totalOpened / totalSent * 100).toFixed(1) : 0;\nconst overallClickRate = totalSent > 0 ? (totalClicks / totalSent * 100).toFixed(1) : 0;\n\nmessage += `**OVERALL PERFORMANCE**\\n`;\nmessage += `📧 Total Sent: ${totalSent}\\n`;\nmessage += `👁️ Open Rate: ${overallOpenRate}%\\n`;\nmessage += `👆 Click Rate: ${overallClickRate}%\\n\\n`;\n\nif (parseFloat(overallOpenRate) > 20) {\n  message += `✅ Open rate is good!\\n`;\n} else {\n  message += `⚠️ Consider improving subject lines\\n`;\n}\n\nif (parseFloat(overallClickRate) > 3) {\n  message += `✅ Click rate is strong!`;\n} else {\n  message += `⚠️ Try stronger CTAs`;\n}\n\nreturn [{\n  json: {\n    message: message,\n    total_sent: totalSent,\n    overall_open_rate: parseFloat(overallOpenRate),\n    overall_click_rate: parseFloat(overallClickRate)\n  }\n}];"
+      },
+      "id": "format-analytics",
+      "name": "Format Campaign Analytics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        850,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Marketing Command Trigger\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-analytics",
+      "name": "Send Campaign Analytics",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        600
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Marketing Command Trigger": {
+      "main": [
+        [
+          {
+            "node": "Show Marketing Menu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Show Marketing Menu": {
+      "main": [
+        [
+          {
+            "node": "Ask Campaign Details",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ask DJ Promo Type",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ask Social Post Details",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Follow-up Customers",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Campaign Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask Campaign Details": {
+      "main": [
+        [
+          {
+            "node": "Wait for Campaign Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Campaign Details": {
+      "main": [
+        [
+          {
+            "node": "Parse Campaign Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Campaign Details": {
+      "main": [
+        [
+          {
+            "node": "Generate Email Campaign (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Email Campaign (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Parse Campaign Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Campaign Content": {
+      "main": [
+        [
+          {
+            "node": "Save Campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Campaign": {
+      "main": [
+        [
+          {
+            "node": "Send Campaign Preview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask DJ Promo Type": {
+      "main": [
+        [
+          {
+            "node": "Wait for Promo Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Promo Type": {
+      "main": [
+        [
+          {
+            "node": "Generate DJ Promo (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate DJ Promo (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Send DJ Promo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask Social Post Details": {
+      "main": [
+        [
+          {
+            "node": "Wait for Social Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Social Details": {
+      "main": [
+        [
+          {
+            "node": "Generate Social Post (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Social Post (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Send Social Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Follow-up Customers": {
+      "main": [
+        [
+          {
+            "node": "Format Follow-up List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Follow-up List": {
+      "main": [
+        [
+          {
+            "node": "Send Follow-up List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Campaign Analytics": {
+      "main": [
+        [
+          {
+            "node": "Format Campaign Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Campaign Analytics": {
+      "main": [
+        [
+          {
+            "node": "Send Campaign Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "f8d7bafb-c6fd-4f49-bdc7-c7f6a574c115",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-11-03T13:39:11.904Z",
+      "createdAt": "2025-11-03T13:39:11.904Z",
+      "role": "workflow:owner",
+      "workflowId": "jwbbmWibkCAQJUwP",
+      "projectId": "iAVMD3lR4QXYg8DV"
+    }
+  ],
+  "tags": []
+}
